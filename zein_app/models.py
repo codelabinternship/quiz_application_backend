@@ -1,0 +1,180 @@
+
+
+
+# Create your models here.
+
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+
+
+
+class CustomUser(AbstractUser):
+    full_name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.full_name:
+            self.full_name = f"{self.first_name} {self.last_name}".strip()
+        super().save(*args, **kwargs)
+
+
+
+class BadPassword(models.Model):
+    password = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.password
+
+
+
+
+from django.conf import settings
+
+class History(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='histories')
+    total_question = models.PositiveIntegerField()
+    correct = models.PositiveIntegerField()
+    failed = models.PositiveIntegerField(editable=False)
+    score = models.FloatField(editable=False)
+    percent = models.FloatField(editable=False)
+
+    def save(self, *args, **kwargs):
+        self.failed = self.total_question - self.correct
+        self.score = float(self.correct)
+        if self.total_question > 0:
+            self.percent = round((self.correct / self.total_question) * 100, 1)
+        else:
+            self.percent = 0.0
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'History of {self.user.username} - Score: {self.score}'
+
+
+
+
+
+class Question(models.Model):
+    text = models.TextField()
+    choice_a = models.CharField(max_length=255)
+    choice_b = models.CharField(max_length=255)
+    choice_c = models.CharField(max_length=255, blank=True, null=True)
+    choice_d = models.CharField(max_length=255, blank=True, null=True)
+
+    correct_choices = models.JSONField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.text
+
+
+
+
+
+
+class Subject(models.Model):
+    name_uz = models.CharField(max_length=255)
+    name_ru = models.CharField(max_length=255)
+    name_en = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name_en
+
+
+
+
+class Topic(models.Model):
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='topics')
+    name = models.CharField(max_length=255)
+    lesson_number = models.PositiveIntegerField()
+
+    def __str__(self):
+        return f'{self.subject.name_en} - {self.name}'
+
+
+
+
+class QuizSession(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quiz_sessions')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, null=True, blank=True)
+    total_questions = models.PositiveIntegerField()
+    is_active = models.BooleanField(default=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f'QuizSession {self.user.username} - {self.subject.name_en}'
+
+
+
+
+
+
+class UserAnswer(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    quiz_session = models.ForeignKey(QuizSession, on_delete=models.CASCADE, related_name='user_answers')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    selected_choices = models.JSONField()
+    is_correct = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'Answer by {self.user.username}'
+
+
+
+
+
+class Course(models.Model):
+    language = models.CharField(max_length=100)
+    duration_months = models.PositiveIntegerField()
+    level = models.CharField(max_length=10)
+    price = models.PositiveIntegerField()
+
+    def __str__(self):
+        return f'{self.language} ({self.level})'
+
+
+
+
+
+class Teacher(models.Model):
+    name = models.CharField(max_length=255)
+    subject = models.CharField(max_length=255)
+    experience_years = models.PositiveIntegerField()
+    photo = models.ImageField(upload_to='teachers/')
+
+    def __str__(self):
+        return self.name
+
+
+
+
+
+
+class FAQ(models.Model):
+    question = models.CharField(max_length=500)
+    answer = models.TextField()
+
+    def __str__(self):
+        return self.question
+
+
+
+
+
+
+class Contact(models.Model):
+    CONTACT_TYPES = (
+        ('phone', 'Phone'),
+        ('email', 'Email'),
+        ('telegram', 'Telegram'),
+        ('instagram', 'Instagram'),
+    )
+    type = models.CharField(max_length=20, choices=CONTACT_TYPES)
+    value = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f'{self.type}: {self.value}'

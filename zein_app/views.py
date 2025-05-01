@@ -178,3 +178,13 @@ class FAQViewSet(viewsets.ModelViewSet):
 class ContactViewSet(viewsets.ModelViewSet):
     queryset = Contact.objects.all()
     serializer_class = ContactSerializer
+
+
+# views.py
+from rest_framework import viewsets
+from .models import TelegramBot
+from .serializers import TelegramBotSerializer
+
+class TelegramBotViewSet(viewsets.ModelViewSet):
+    queryset = TelegramBot.objects.all()
+    serializer_class = TelegramBotSerializer

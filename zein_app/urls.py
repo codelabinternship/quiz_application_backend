@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from django.conf.urls.static import static
 from django.conf import settings
+from .views import TelegramBotViewSet
 
 from .views import (
     CustomUserViewSet, BadPasswordViewSet, HistoryViewSet,
@@ -22,6 +23,7 @@ router.register(r'courses', CourseViewSet)
 router.register(r'teachers', TeacherViewSet)
 router.register(r'faq', FAQViewSet)
 router.register(r'contacts', ContactViewSet)
+router.register(r'bots', TelegramBotViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

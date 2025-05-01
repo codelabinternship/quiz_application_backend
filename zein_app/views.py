@@ -1,5 +1,7 @@
 from django.shortcuts import render
 from rest_framework import viewsets
+from .pagination import CustomPagination
+from rest_framework import filters
 
 
 # Create your views here.
@@ -98,6 +100,10 @@ from .serializers import (
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
+    pagination_class = CustomPagination
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['username', 'created_at']
+    ordering = ['username']
 
 
 
@@ -110,6 +116,10 @@ class BadPasswordViewSet(viewsets.ModelViewSet):
 class QuestionViewSet(viewsets.ModelViewSet):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
+    pagination_class = CustomPagination
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['created_at', 'text']
+    ordering = ['-created_at']
 
 
 
@@ -122,6 +132,10 @@ class HistoryViewSet(viewsets.ModelViewSet):
 class SubjectViewSet(viewsets.ModelViewSet):
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
+    pagination_class = CustomPagination
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['name_en', 'name_uz']
+    ordering = ['name_en']
 
 
 

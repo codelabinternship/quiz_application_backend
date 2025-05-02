@@ -73,7 +73,6 @@ class Question(models.Model):
 
 
 
-
 class Subject(models.Model):
     name_uz = models.CharField(max_length=255)
     name_ru = models.CharField(max_length=255)
@@ -94,8 +93,6 @@ class Topic(models.Model):
         return f'{self.subject.name_en} - {self.name}'
 
 
-
-
 class QuizSession(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quiz_sessions')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
@@ -113,15 +110,15 @@ class QuizSession(models.Model):
 
 
 
-class UserAnswer(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    quiz_session = models.ForeignKey(QuizSession, on_delete=models.CASCADE, related_name='user_answers')
-    question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    selected_choices = models.JSONField()
-    is_correct = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f'Answer by {self.user.username}'
+# class UserAnswer(models.Model):
+#     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+#     quiz_session = models.ForeignKey(QuizSession, on_delete=models.CASCADE, related_name='user_answers')
+#     question = models.ForeignKey(Question, on_delete=models.CASCADE)
+#     selected_choices = models.JSONField()
+#     is_correct = models.BooleanField(default=False)
+#
+#     def __str__(self):
+#         return f'Answer by {self.user.username}'
 
 
 

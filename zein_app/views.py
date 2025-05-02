@@ -87,11 +87,11 @@ class DashboardView(APIView):
 
 from .models import (
     CustomUser, BadPassword, History, Subject, Topic,
-    Question, QuizSession, UserAnswer, Course, Teacher, FAQ, Contact
+    Question, QuizSession, Course, Teacher, FAQ, Contact
 )
 from .serializers import (
     CustomUserSerializer, BadPasswordSerializer, HistorySerializer, SubjectSerializer,
-    TopicSerializer, QuestionSerializer, QuizSessionSerializer, UserAnswerSerializer,
+    TopicSerializer, QuestionSerializer, QuizSessionSerializer,
     CourseSerializer, TeacherSerializer, FAQSerializer, ContactSerializer
 )
 
@@ -113,13 +113,13 @@ class BadPasswordViewSet(viewsets.ModelViewSet):
 
 
 
-class QuestionViewSet(viewsets.ModelViewSet):
-    queryset = Question.objects.all()
-    serializer_class = QuestionSerializer
-    pagination_class = CustomPagination
-    filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['created_at', 'text']
-    ordering = ['-created_at']
+# class QuestionViewSet(viewsets.ModelViewSet):
+#     queryset = Question.objects.all()
+#     serializer_class = QuestionSerializer
+#     pagination_class = CustomPagination
+#     filter_backends = [filters.OrderingFilter]
+#     ordering_fields = ['created_at', 'text']
+#     ordering = ['-created_at']
 
 
 
@@ -151,10 +151,9 @@ class QuizSessionViewSet(viewsets.ModelViewSet):
 
 
 
-class UserAnswerViewSet(viewsets.ModelViewSet):
-    queryset = UserAnswer.objects.all()
-    serializer_class = UserAnswerSerializer
-
+# class UserAnswerViewSet(viewsets.ModelViewSet):
+#     queryset = UserAnswer.objects.all()
+#     serializer_class = UserAnswerSerializer
 
 
 class CourseViewSet(viewsets.ModelViewSet):

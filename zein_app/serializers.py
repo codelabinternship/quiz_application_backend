@@ -108,7 +108,7 @@ class BadPasswordSerializer(serializers.ModelSerializer):
 
 from .models import (
     BadPassword, Subject, Topic,
-    QuizSession, UserAnswer, Course, Teacher, FAQ, Contact
+    QuizSession, Course, Teacher, FAQ, Contact
 )
 
 
@@ -135,10 +135,10 @@ class QuizSessionSerializer(serializers.ModelSerializer):
 
 
 
-class UserAnswerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserAnswer
-        fields = '__all__'
+# class UserAnswerSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = UserAnswer
+#         fields = '__all__'
 
 
 

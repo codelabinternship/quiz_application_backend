@@ -53,7 +53,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/register/', RegisterView.as_view(),name='auth_register'),
     path('api/auth/login/', LoginView.as_view(),name='auth_login'),
-    path('api/quizzes/', include('quizzes.urls')),
 
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     # path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

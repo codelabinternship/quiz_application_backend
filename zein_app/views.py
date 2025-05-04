@@ -87,11 +87,11 @@ class DashboardView(APIView):
 
 from .models import (
     CustomUser, BadPassword, History, Subject, Topic,
-    Question, QuizSession, Course, Teacher, FAQ, Contact
+    Question, UserAnswer, Course, Teacher, FAQ, Contact
 )
 from .serializers import (
-    CustomUserSerializer, BadPasswordSerializer, HistorySerializer, SubjectSerializer,
-    TopicSerializer, QuestionSerializer, QuizSessionSerializer,
+    CustomUserSerializer, BadPasswordSerializer, HistorySerializer,
+    QuestionSerializer, UserAnswerSerializer,
     CourseSerializer, TeacherSerializer, FAQSerializer, ContactSerializer
 )
 
@@ -129,31 +129,272 @@ class HistoryViewSet(viewsets.ModelViewSet):
 
 
 
-class SubjectViewSet(viewsets.ModelViewSet):
-    queryset = Subject.objects.all()
-    serializer_class = SubjectSerializer
-    pagination_class = CustomPagination
-    filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['name_en', 'name_uz']
-    ordering = ['name_en']
+# class SubjectViewSet(viewsets.ModelViewSet):
+#     queryset = Subject.objects.all()
+#     serializer_class = SubjectSerializer
+#     pagination_class = CustomPagination
+#     filter_backends = [filters.OrderingFilter]
+#     ordering_fields = ['name_en', 'name_uz']
+#     ordering = ['name_en']
 
 
 
-class TopicViewSet(viewsets.ModelViewSet):
-    queryset = Topic.objects.all()
-    serializer_class = TopicSerializer
+# class TopicViewSet(viewsets.ModelViewSet):
+#     queryset = Topic.objects.all()
+#     serializer_class = TopicSerializer
 
 
 
-class QuizSessionViewSet(viewsets.ModelViewSet):
-    queryset = QuizSession.objects.all()
-    serializer_class = QuizSessionSerializer
+# class QuizSessionViewSet(viewsets.ModelViewSet):
+#     queryset = QuizSession.objects.all()
+#     serializer_class = QuizSessionSerializer
 
 
 
 # class UserAnswerViewSet(viewsets.ModelViewSet):
 #     queryset = UserAnswer.objects.all()
 #     serializer_class = UserAnswerSerializer
+
+
+from rest_framework.decorators import api_view
+from .models import Question, Choice
+
+@api_view(['POST'])
+def submit_answer(request, pk):
+    try:
+        question = Question.objects.get(pk=pk)
+        choice_id = request.data.get('choice_id')
+        selected_choice = Choice.objects.get(id=choice_id, question=question)
+
+        is_correct = selected_choice.is_correct
+        return Response({
+            "question": question.text,
+            "your_answer": selected_choice.text,
+            "correct": is_correct
+        })
+    except (Question.DoesNotExist, Choice.DoesNotExist):
+        return Response({"error": "Invalid question or choice"}, status=400)
+
+
+
+
+
+
+
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from rest_framework import viewsets, status, permissions
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+
+from .models import Subject, Topic, Question, Choice, Quiz, UserAnswer
+from .serializers import (
+    SubjectListSerializer, SubjectDetailSerializer,
+    TopicListSerializer, TopicDetailSerializer,
+    QuestionListSerializer, QuestionDetailSerializer, AdminQuestionSerializer,
+    QuizCreateSerializer, QuizAnswerSerializer, QuizResultSerializer, QuizDetailSerializer
+)
+from .permissions import IsAdminOrReadOnly
+
+
+class SubjectViewSet(viewsets.ModelViewSet):
+    queryset = Subject.objects.all()
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return SubjectListSerializer
+        return SubjectDetailSerializer
+
+
+class TopicViewSet(viewsets.ModelViewSet):
+    queryset = Topic.objects.all()
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TopicListSerializer
+        return TopicDetailSerializer
+
+    def get_queryset(self):
+        queryset = Topic.objects.all()
+        subject_id = self.request.query_params.get('subject_id', None)
+        if subject_id is not None:
+            queryset = queryset.filter(subject_id=subject_id)
+        return queryset
+
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    queryset = Question.objects.all()
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.request.user.is_staff:
+            return AdminQuestionSerializer
+        if self.action == 'list':
+            return QuestionListSerializer
+        return QuestionDetailSerializer
+
+    def get_queryset(self):
+        queryset = Question.objects.all()
+        topic_id = self.request.query_params.get('topic_id', None)
+        if topic_id is not None:
+            queryset = queryset.filter(topic_id=topic_id)
+        return queryset
+
+
+class QuizAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = QuizCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            topic_id = serializer.validated_data['topic'].id
+
+            questions = Question.objects.filter(topic_id=topic_id)
+
+            if not questions.exists():
+                return Response(
+                    {"error": "В данной теме нет вопросов"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            quiz = Quiz.objects.create(
+                user=request.user,
+                topic_id=topic_id,
+                total_questions=questions.count()
+            )
+
+            first_question = questions.first()
+            question_serializer = QuestionDetailSerializer(first_question)
+
+            return Response({
+                "quiz_id": quiz.id,
+                "question": question_serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'])
+    def next_question(self, request, quiz_id):
+        """Получение следующего вопроса викторины"""
+        quiz = get_object_or_404(Quiz, id=quiz_id, user=request.user)
+
+        if quiz.status == 'completed':
+            return Response(
+                {"error": "Эта викторина уже завершена", "quiz_id": quiz.id},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        all_questions = Question.objects.filter(topic=quiz.topic)
+
+        answered_question_ids = UserAnswer.objects.filter(quiz=quiz).values_list('question_id', flat=True)
+
+        next_question = all_questions.exclude(id__in=answered_question_ids).first()
+
+        if next_question:
+            question_serializer = QuestionDetailSerializer(next_question)
+            return Response({
+                "quiz_id": quiz.id,
+                "question": question_serializer.data
+            })
+        else:
+            quiz.status = 'completed'
+            quiz.completed_at = timezone.now()
+            quiz.save()
+
+            result_serializer = QuizResultSerializer(quiz)
+            return Response({
+                "message": "Викторина завершена",
+                "results": result_serializer.data
+            })
+
+    @action(detail=True, methods=['post'])
+    def answer(self, request, quiz_id):
+        quiz = get_object_or_404(Quiz, id=quiz_id, user=request.user)
+
+        if quiz.status == 'completed':
+            return Response(
+                {"error": "Эта викторина уже завершена"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = QuizAnswerSerializer(data=request.data)
+        if serializer.is_valid():
+            question_id = serializer.validated_data['question_id']
+            choice_id = serializer.validated_data['choice_id']
+
+            question = get_object_or_404(Question, id=question_id, topic=quiz.topic)
+
+            choice = get_object_or_404(Choice, id=choice_id, question=question)
+
+            if UserAnswer.objects.filter(quiz=quiz, question=question).exists():
+                return Response(
+                    {"error": "Вы уже ответили на этот вопрос"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            is_correct = choice.is_correct
+            UserAnswer.objects.create(
+                quiz=quiz,
+                question=question,
+                selected_choice=choice,
+                is_correct=is_correct
+            )
+
+            if is_correct:
+                quiz.score += 1
+                quiz.save()
+
+            all_questions = Question.objects.filter(topic=quiz.topic)
+
+            answered_question_ids = UserAnswer.objects.filter(quiz=quiz).values_list('question_id', flat=True)
+
+            if all_questions.count() == len(answered_question_ids):
+                quiz.status = 'completed'
+                quiz.completed_at = timezone.now()
+                quiz.save()
+
+                result_serializer = QuizResultSerializer(quiz)
+                return Response({
+                    "message": "Викторина завершена",
+                    "is_correct": is_correct,
+                    "results": result_serializer.data
+                })
+            else:
+                next_question = all_questions.exclude(id__in=answered_question_ids).first()
+                question_serializer = QuestionDetailSerializer(next_question)
+
+                return Response({
+                    "is_correct": is_correct,
+                    "next_question": question_serializer.data
+                })
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, quiz_id=None):
+        user = request.user
+
+        if quiz_id:
+            quiz = get_object_or_404(Quiz, id=quiz_id, user=user)
+            serializer = QuizDetailSerializer(quiz)
+            return Response(serializer.data)
+        else:
+            quizzes = Quiz.objects.filter(user=user)
+            serializer = QuizResultSerializer(quizzes, many=True)
+            return Response(serializer.data)
+
+
+
+
+
+
+
+
+
+
+
 
 
 class CourseViewSet(viewsets.ModelViewSet):

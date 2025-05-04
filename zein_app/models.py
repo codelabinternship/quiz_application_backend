@@ -55,73 +55,183 @@ class History(models.Model):
 
 
 
-class Question(models.Model):
-    text = models.TextField()
-    choice_a = models.CharField(max_length=255)
-    choice_b = models.CharField(max_length=255)
-    choice_c = models.CharField(max_length=255, blank=True, null=True)
-    choice_d = models.CharField(max_length=255, blank=True, null=True)
-
-    correct_choices = models.JSONField()
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.text
-
-
+# class Question(models.Model):
+#     text = models.TextField()
+#     choice_a = models.CharField(max_length=255)
+#     choice_b = models.CharField(max_length=255)
+#     choice_c = models.CharField(max_length=255, blank=True, null=True)
+#     choice_d = models.CharField(max_length=255, blank=True, null=True)
+#
+#     correct_choices = models.JSONField()
+#
+#     created_at = models.DateTimeField(auto_now_add=True)
+#
+#     def __str__(self):
+#         return self.text
 
 
+
+
+
+
+# class Subject(models.Model):
+#     name_uz = models.CharField(max_length=255)
+#     name_ru = models.CharField(max_length=255)
+#     name_en = models.CharField(max_length=255)
+#
+#     def __str__(self):
+#         return self.name_en
+
+
+
+
+
+
+
+
+from django.contrib.auth.models import AbstractUser
 
 
 class Subject(models.Model):
-    name_uz = models.CharField(max_length=255)
-    name_ru = models.CharField(max_length=255)
-    name_en = models.CharField(max_length=255)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to='subjects/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name_en
+        return self.name
 
-
+    class Meta:
+        ordering = ['name']
 
 
 class Topic(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='topics')
-    name = models.CharField(max_length=255)
-    lesson_number = models.PositiveIntegerField()
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to='topics/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.subject.name_en} - {self.name}'
+        return f"{self.subject.name} - {self.name}"
+
+    class Meta:
+        ordering = ['subject', 'name']
 
 
-
-
-class QuizSession(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quiz_sessions')
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, null=True, blank=True)
-    total_questions = models.PositiveIntegerField()
-    is_active = models.BooleanField(default=True)
-    started_at = models.DateTimeField(auto_now_add=True)
-    finished_at = models.DateTimeField(null=True, blank=True)
+class Question(models.Model):
+    # topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name='questions', default=1)
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name='questions', null=True, blank=True)
+    text = models.TextField()
+    explanation = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to='questions/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'QuizSession {self.user.username} - {self.subject.name_en}'
+        return self.text[:50]
+
+    class Meta:
+        ordering = ['topic', 'created_at']
 
 
-
-
-
-
-class UserAnswer(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    quiz_session = models.ForeignKey(QuizSession, on_delete=models.CASCADE, related_name='user_answers')
-    question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    selected_choices = models.JSONField()
+class Choice(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='choices')
+    text = models.CharField(max_length=255)
     is_correct = models.BooleanField(default=False)
 
     def __str__(self):
-        return f'Answer by {self.user.username}'
+        return self.text
+
+    class Meta:
+        ordering = ['question', 'id']
+
+
+class Quiz(models.Model):
+    STATUS_CHOICES = (
+        ('in_progress', 'В процессе'),
+        ('completed', 'Завершено'),
+    )
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quizzes')
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name='quizzes')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='in_progress')
+    score = models.IntegerField(default=0)
+    total_questions = models.IntegerField(default=0)
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.topic.name} ({self.status})"
+
+    class Meta:
+        ordering = ['-started_at']
+
+
+class UserAnswer(models.Model):
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='answers')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    selected_choice = models.ForeignKey(Choice, on_delete=models.CASCADE)
+    is_correct = models.BooleanField(default=False)
+    answered_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.quiz.user.username} - {self.question.text[:30]}"
+
+    class Meta:
+        ordering = ['quiz', 'answered_at']
+        unique_together = ['quiz', 'question']
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# class Topic(models.Model):
+#     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='topics')
+#     name = models.CharField(max_length=255)
+#     lesson_number = models.PositiveIntegerField()
+#
+#     def __str__(self):
+#         return f'{self.subject.name_en} - {self.name}'
+
+
+
+
+# class QuizSession(models.Model):
+#     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quiz_sessions')
+#     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+#     topic = models.ForeignKey(Topic, on_delete=models.CASCADE, null=True, blank=True)
+#     total_questions = models.PositiveIntegerField()
+#     is_active = models.BooleanField(default=True)
+#     started_at = models.DateTimeField(auto_now_add=True)
+#     finished_at = models.DateTimeField(null=True, blank=True)
+#
+#     def __str__(self):
+#         return f'QuizSession {self.user.username} - {self.subject.name_en}'
+
+
+
+
+
+
+# class UserAnswer(models.Model):
+#     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+#     quiz_session = models.ForeignKey(QuizSession, on_delete=models.CASCADE, related_name='user_answers')
+#     question = models.ForeignKey(Question, on_delete=models.CASCADE)
+#     selected_choices = models.JSONField()
+#     is_correct = models.BooleanField(default=False)
+#
+#     def __str__(self):
+#         return f'Answer by {self.user.username}'
 
 
 
@@ -191,4 +301,5 @@ class TelegramBot(models.Model):
 
     def __str__(self):
         return self.username
+
 

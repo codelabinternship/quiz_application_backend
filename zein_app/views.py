@@ -200,7 +200,8 @@ from .permissions import IsAdminOrReadOnly
 
 class SubjectViewSet(viewsets.ModelViewSet):
     queryset = Subject.objects.all()
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [AllowAny]
+    # permission_classes = [IsAdminOrReadOnly]
 
     def get_serializer_class(self):
         if self.action == 'list':

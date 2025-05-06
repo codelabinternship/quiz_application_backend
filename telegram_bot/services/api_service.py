@@ -156,7 +156,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
-from zein_app.models import Subject, Topic, Quiz, Question, UserAnswer, CustomUser
+from zein_app.models import Subject, Topic, Quiz, Question, UserAnswer, CustomUser, Choice
 
 logger = logging.getLogger(__name__)
 
@@ -232,9 +232,12 @@ class APIService:
             return [
                 {
                     'id': quiz.id,
-                    'title': getattr(quiz, 'title', ''),
-                    'description': getattr(quiz, 'description', ''),
-                    'questions_count': quiz.questions.count()
+                    # 'title': getattr(quiz, 'title', ''),
+                    # 'description': getattr(quiz, 'description', ''),
+                    'title': quiz.topic.name,
+                    'description': quiz.topic.description,
+                    # 'questions_count': quiz.questions.count()
+                    'questions_count': Question.objects.filter(topic=quiz.topic).count()
                 }
                 for quiz in quizzes
             ]
@@ -246,30 +249,40 @@ class APIService:
     def get_quiz_with_questions(quiz_id, language_code='ru'):
         try:
             quiz = Quiz.objects.get(id=quiz_id)
+            # questions = Question.objects.filter(topic=quiz.topic)
             questions = Question.objects.filter(topic=quiz.topic)
 
             quiz_data = {
                 'id': quiz.id,
-                'title': quiz.name,
-                'description': quiz.description,
+                # 'title': quiz.name,
+                # 'description': quiz.description,
+                'title': quiz.topic.name,
+                'description': quiz.topic.description,
                 'questions': []
             }
 
             for question in questions:
-                # Здесь предполагается, что UserAnswer — это модель вариантов ответов.
-                # Если у тебя есть отдельная модель Choice, то фильтруй по ней.
-                answers = UserAnswer.objects.filter(question=question)
+                # answers = UserAnswer.objects.filter(question=question)
+                choices = Choice.objects.filter(question=question)
                 question_data = {
                     'id': question.id,
                     'text': question.text,
+                    # 'answers': [
+                    #     {
+                    #         'id': answer.id,
+                    #         'text': answer.text,
+                    #         'is_correct': answer.is_correct
+                    #     }
+                    #     for answer in answers
+                    # ]
                     'answers': [
                         {
-                            'id': answer.id,
-                            'text': answer.text,
-                            'is_correct': answer.is_correct
+                        'id': choice.id,
+                        'text': choice.text,
+                        'is_correct': choice.is_correct
                         }
-                        for answer in answers
-                    ]
+                        for choice in choices
+                        ]
                 }
                 quiz_data['questions'].append(question_data)
 

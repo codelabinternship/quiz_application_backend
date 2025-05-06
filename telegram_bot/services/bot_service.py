@@ -391,9 +391,7 @@ class BotService:
                 return ConversationHandler.END
 
 
-            await query.edit_message_text(f"Вы начали проходить тест: {quiz_data['title']}\n\n"
-                                          f"Тест содержит {len(quiz_data['questions'])} вопросов.\n\n"
-                                          f"В этом месте должна быть реализована логика прохождения теста.")
+            await query.edit_message_text(f"В этом месте должна быть реализована логика прохождения теста.")
 
             return ConversationHandler.END
         except Exception as e:

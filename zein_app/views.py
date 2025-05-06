@@ -211,7 +211,8 @@ class SubjectViewSet(viewsets.ModelViewSet):
 
 class TopicViewSet(viewsets.ModelViewSet):
     queryset = Topic.objects.all()
-    permission_classes = [IsAdminOrReadOnly]
+    # permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [AllowAny]
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -228,7 +229,8 @@ class TopicViewSet(viewsets.ModelViewSet):
 
 class QuestionViewSet(viewsets.ModelViewSet):
     queryset = Question.objects.all()
-    permission_classes = [IsAdminOrReadOnly]
+    # permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [AllowAny]
 
     def get_serializer_class(self):
         if self.request.user.is_staff:
@@ -246,7 +248,8 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
 
 class QuizAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = QuizCreateSerializer(data=request.data)
@@ -279,7 +282,6 @@ class QuizAPIView(APIView):
 
     @action(detail=True, methods=['get'])
     def next_question(self, request, quiz_id):
-        """Получение следующего вопроса викторины"""
         quiz = get_object_or_404(Quiz, id=quiz_id, user=request.user)
 
         if quiz.status == 'completed':

@@ -281,6 +281,48 @@ class BotService:
             await update.callback_query.message.reply_text("Произошла ошибка. Пожалуйста, попробуйте позже.")
             return ConversationHandler.END
 
+    # async def topic_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    #     try:
+    #         query = update.callback_query
+    #         await query.answer()
+    #
+    #         topic_id = int(query.data.split("_")[1])
+    #         context.user_data["topic_id"] = topic_id
+    #         lang_code = context.user_data.get("language", "ru")
+    #
+    #         @sync_to_async
+    #         def get_quizzes_sync():
+    #             return APIService.get_quizzes(topic_id, language_code=lang_code)
+    #
+    #         quizzes = await get_quizzes_sync()
+    #
+    #         if not quizzes or len(quizzes) == 0:
+    #             await query.edit_message_text("По данной теме нет доступных тестов. Пожалуйста, выберите другую тему.")
+    #             return ConversationHandler.END
+    #
+    #
+    #         quiz = quizzes[0]
+    #
+    #         quiz_info = TEXTS[lang_code]["quiz_info"].format(
+    #             quiz["title"],
+    #             quiz["description"],
+    #             quiz["questions_count"]
+    #         )
+    #
+    #         keyboard = [[InlineKeyboardButton(TEXTS[lang_code]["start_quiz"], callback_data=f"quiz_{quiz['id']}")]]
+    #         reply_markup = InlineKeyboardMarkup(keyboard)
+    #
+    #         await query.edit_message_text(quiz_info, reply_markup=reply_markup)
+    #         return QUIZ_SELECTION
+    #     except Exception as e:
+    #         logger.error(f"Ошибка в topic_handler: {e}")
+    #         await update.callback_query.message.reply_text("Произошла ошибка. Пожалуйста, попробуйте позже.")
+    #         return ConversationHandler.END
+
+
+
+
+
     async def topic_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         try:
             query = update.callback_query
@@ -291,33 +333,43 @@ class BotService:
             lang_code = context.user_data.get("language", "ru")
 
             @sync_to_async
-            def get_quizzes_sync():
-                return APIService.get_quizzes(topic_id, language_code=lang_code)
+            def get_app_user_id():
+                tg = TelegramUser.objects.get(id=context.user_data["telegram_user_id"])
+                return tg.user.id
 
-            quizzes = await get_quizzes_sync()
+            app_user_id = await get_app_user_id()
 
-            if not quizzes or len(quizzes) == 0:
-                await query.edit_message_text("По данной теме нет доступных тестов. Пожалуйста, выберите другую тему.")
+            @sync_to_async
+            def get_or_create_quiz_sync():
+                return APIService.get_or_create_quiz(app_user_id, topic_id)
+
+            quiz = await get_or_create_quiz_sync()
+
+            if not quiz:
+                await query.edit_message_text("Не удалось запустить викторину. Попробуйте позже.")
                 return ConversationHandler.END
 
 
-            quiz = quizzes[0]
-
             quiz_info = TEXTS[lang_code]["quiz_info"].format(
-                quiz["title"],
-                quiz["description"],
-                quiz["questions_count"]
+                getattr(quiz, 'name', ''),
+                getattr(quiz, 'description', ''),
+                quiz.total_questions
             )
-
-            keyboard = [[InlineKeyboardButton(TEXTS[lang_code]["start_quiz"], callback_data=f"quiz_{quiz['id']}")]]
+            keyboard = [
+                [InlineKeyboardButton(TEXTS[lang_code]["start_quiz"], callback_data=f"quiz_{quiz.id}")]
+            ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             await query.edit_message_text(quiz_info, reply_markup=reply_markup)
             return QUIZ_SELECTION
+
         except Exception as e:
             logger.error(f"Ошибка в topic_handler: {e}")
-            await update.callback_query.message.reply_text("Произошла ошибка. Пожалуйста, попробуйте позже.")
+            await update.callback_query.message.reply_text("Произошла ошибка. Попробуйте позже.")
             return ConversationHandler.END
+
+
+
 
     async def quiz_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         try:

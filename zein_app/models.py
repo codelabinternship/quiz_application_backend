@@ -114,6 +114,7 @@ class Topic(models.Model):
     description = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to='topics/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.subject.name} - {self.name}"

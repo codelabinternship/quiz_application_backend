@@ -1,3 +1,6 @@
+from telegram import Update
+from telegram import Poll, PollAnswer
+from telegram.ext import PollAnswerHandler, ContextTypes
 import logging
 from asgiref.sync import sync_to_async
 from django.db import transaction
@@ -15,7 +18,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# LANGUAGE_SELECTION, PHONE_NUMBER, FULL_NAME, SUBJECT_SELECTION, TOPIC_SELECTION, QUIZ_SELECTION = range(6)
 LANGUAGE_SELECTION, PHONE_NUMBER, FULL_NAME, SUBJECT_SELECTION, TOPIC_SELECTION, QUIZ_SELECTION, QUESTION, ANSWER = range(8)
 
 
@@ -56,32 +58,6 @@ class BotService:
         self.token = token
         self.application = None
 
-    # def start(self):
-    #     self.application = Application.builder().token(self.token).build()
-    #
-    #
-    #     conv_handler = ConversationHandler(
-    #         entry_points=[CommandHandler("start", self.start_command)],
-    #         states={
-    #             LANGUAGE_SELECTION: [CallbackQueryHandler(self.language_handler, pattern=r"^lang_")],
-    #             PHONE_NUMBER: [MessageHandler(filters.CONTACT, self.phone_handler)],
-    #             FULL_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.name_handler)],
-    #             SUBJECT_SELECTION: [CallbackQueryHandler(self.subject_handler, pattern=r"^subject_")],
-    #             TOPIC_SELECTION: [CallbackQueryHandler(self.topic_handler, pattern=r"^topic_")],
-    #             QUIZ_SELECTION: [CallbackQueryHandler(self.quiz_handler, pattern=r"^quiz_")]
-    #         },
-    #         fallbacks=[CommandHandler("cancel", self.cancel_command)]
-    #     )
-    #
-    #
-    #     self.application.add_handler(conv_handler)
-    #
-    #
-    #     self.application.run_polling()
-
-
-
-
 
 
     def start(self):
@@ -102,7 +78,7 @@ class BotService:
                     CallbackQueryHandler(self.quiz_handler, pattern=r"^quiz_"),
                     CallbackQueryHandler(self.restart_quiz_handler, pattern=r"^restart_quiz_")
                 ],
-                QUESTION: [CallbackQueryHandler(self.answer_handler, pattern=r"^answer_")],
+                QUESTION: [CallbackQueryHandler(self.poll_answer_handler, pattern=r"^answer_")],
                 ANSWER: [CallbackQueryHandler(self.next_question_handler, pattern=r"^next_question$")]
             },
             fallbacks=[CommandHandler("cancel", self.cancel_command)]
@@ -158,10 +134,6 @@ class BotService:
             logger.error(f"Ошибка в next_question_handler: {e}")
             await update.callback_query.message.reply_text("Произошла ошибка при переходе к следующему вопросу.")
             return ConversationHandler.END
-
-
-
-
 
 
 
@@ -370,88 +342,77 @@ class BotService:
 
 
 
+
+
+
     async def show_question(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        try:
-            quiz_data = context.user_data.get("quiz_data")
-            current_index = context.user_data.get("current_question_index", 0)
-            lang_code = context.user_data.get("language", "ru")
+        quiz_data = context.user_data["quiz_data"]
+        print(quiz_data)
+        idx = context.user_data.get("current_question_index", 0)
 
-            if current_index >= len(quiz_data.get('questions', [])):
-                return await self.show_quiz_results(update, context)
+        if idx >= len(quiz_data["questions"]):
+            return await self.show_quiz_results(update, context)
 
-            question = quiz_data['questions'][current_index]
+        q = quiz_data["questions"][idx]
+        text = f"[{idx + 1}/{len(quiz_data['questions'])}] {q['text']}"
+        options = [a["text"] for a in q["answers"]]
+        correct_option = next(i for i, a in enumerate(q["answers"]) if a.get("is_correct"))
 
-            context.user_data["current_question"] = question
+        message = await update.effective_chat.send_poll(
+            question=text,
+            options=options,
+            type="quiz",
+            correct_option_id=correct_option,
+            is_anonymous=False,
+            explanation="Смотри ответ ниже"
+        )
+        polls = context.user_data.setdefault("polls_mapping", {})
+        polls[message.poll.id] = idx
 
-            keyboard = []
-            for answer in question.get('answers', []):
-                callback_data = f"answer_{current_index}_{answer['id']}"
-                keyboard.append([InlineKeyboardButton(answer['text'], callback_data=callback_data)])
+        context.user_data["current_question_index"] = idx + 1
 
-            reply_markup = InlineKeyboardMarkup(keyboard)
+        return QUESTION
 
-            question_text = f"Вопрос {current_index + 1} из {context.user_data['total_questions']}:\n\n{question['text']}"
-
-            if update.callback_query:
-                await update.callback_query.edit_message_text(
-                    text=question_text,
-                    reply_markup=reply_markup
-                )
-            else:
-                await update.message.reply_text(
-                    text=question_text,
-                    reply_markup=reply_markup
-                )
-
-            return QUESTION
-
-        except Exception as e:
-            logger.error(f"Ошибка в show_question: {e}")
-            if update.callback_query:
-                await update.callback_query.message.reply_text("Произошла ошибка при отображении вопроса.")
-            else:
-                await update.message.reply_text("Произошла ошибка при отображении вопроса.")
-            return ConversationHandler.END
-
-    # async def topic_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # async def show_question(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     #     try:
-    #         query = update.callback_query
-    #         await query.answer()
-    #
-    #         topic_id = int(query.data.split("_")[1])
-    #         context.user_data["topic_id"] = topic_id
+    #         quiz_data = context.user_data.get("quiz_data")
+    #         current_index = context.user_data.get("current_question_index", 0)
     #         lang_code = context.user_data.get("language", "ru")
     #
-    #         @sync_to_async
-    #         def get_quizzes_sync():
-    #             return APIService.get_quizzes(topic_id, language_code=lang_code)
+    #         if current_index >= len(quiz_data.get('questions', [])):
+    #             return await self.show_quiz_results(update, context)
     #
-    #         quizzes = await get_quizzes_sync()
-    #
-    #         if not quizzes or len(quizzes) == 0:
-    #             await query.edit_message_text("По данной теме нет доступных тестов. Пожалуйста, выберите другую тему.")
-    #             return ConversationHandler.END
+    #         question = quiz_data['questions'][current_index]
+    #         context.user_data["current_question"] = question
     #
     #
-    #         quiz = quizzes[0]
+    #         question_text = f"[{current_index + 1}/{context.user_data['total_questions']}] {question['text']}"
+    #         options = [answer['text'] for answer in question['answers']]
     #
-    #         quiz_info = TEXTS[lang_code]["quiz_info"].format(
-    #             quiz["title"],
-    #             quiz["description"],
-    #             quiz["questions_count"]
+    #
+    #         correct_option_id = next(
+    #             (i for i, answer in enumerate(question['answers']) if answer.get('is_correct')), None
     #         )
     #
-    #         keyboard = [[InlineKeyboardButton(TEXTS[lang_code]["start_quiz"], callback_data=f"quiz_{quiz['id']}")]]
-    #         reply_markup = InlineKeyboardMarkup(keyboard)
     #
-    #         await query.edit_message_text(quiz_info, reply_markup=reply_markup)
-    #         return QUIZ_SELECTION
+    #         await update.effective_chat.send_poll(
+    #             question=question_text,
+    #             options=options,
+    #             type="quiz",
+    #             correct_option_id=correct_option_id,
+    #             is_anonymous=False,
+    #             explanation="Выберите правильный ответ"
+    #         )
+    #
+    #
+    #         context.user_data["current_question_index"] = current_index + 1
+    #
+    #         return QUESTION
+    #
     #     except Exception as e:
-    #         logger.error(f"Ошибка в topic_handler: {e}")
-    #         await update.callback_query.message.reply_text("Произошла ошибка. Пожалуйста, попробуйте позже.")
+    #         logger.error(f"Ошибка в show_question: {e}")
+    #         await update.effective_chat.send_message("Произошла ошибка при отображении вопроса.")
     #         return ConversationHandler.END
-
-
 
 
 
@@ -491,7 +452,6 @@ class BotService:
                 [InlineKeyboardButton(TEXTS[lang_code]["start_quiz"], callback_data=f"quiz_{quiz.id}")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-
             await query.edit_message_text(quiz_info, reply_markup=reply_markup)
             return QUIZ_SELECTION
 
@@ -499,6 +459,13 @@ class BotService:
             logger.error(f"Ошибка в topic_handler: {e}")
             await update.callback_query.message.reply_text("Произошла ошибка. Попробуйте позже.")
             return ConversationHandler.END
+
+
+
+
+
+
+
 
     async def quiz_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         try:
@@ -565,250 +532,117 @@ class BotService:
             await update.callback_query.message.reply_text("Произошла ошибка. Пожалуйста, попробуйте позже.")
             return ConversationHandler.END
 
-    async def answer_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+
+
+    async def poll_answer_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         try:
-            query = update.callback_query
-            await query.answer()
+            pa: PollAnswer = update.poll_answer
+            user_id = pa.user.id
+            poll_id = pa.poll_id
+            selected_option = pa.option_ids[0]
 
-            _, question_index, answer_id = query.data.split("_")
-            question_index = int(question_index)
-            answer_id = int(answer_id)
+            polls_map = context.user_data.get("polls_mapping", {})
+            question_index = polls_map.get(poll_id)
+            if question_index is None:
+                return QUESTION
 
-            quiz_data = context.user_data.get("quiz_data")
-            question = quiz_data['questions'][question_index]
+            q = context.user_data["quiz_data"]["questions"][question_index]
+            correct_option = next(i for i, a in enumerate(q["answers"]) if a.get("is_correct"))
+            is_correct = (selected_option == correct_option)
 
-            selected_answer = None
-            is_correct = False
-            for answer in question.get('answers', []):
-                if answer['id'] == answer_id:
-                    selected_answer = answer
-                    is_correct = answer.get('is_correct', False)
-                    break
-
-            context.user_data["user_answers"][question_index] = {
-                'question_id': question['id'],
-                'answer_id': answer_id,
-                'is_correct': is_correct
+            ua = context.user_data.setdefault("user_answers", {})
+            ua[question_index] = {
+                "question_id": q["id"],
+                "answer_id": q["answers"][selected_option]["id"],
+                "is_correct": is_correct
             }
-
             if is_correct:
-                context.user_data["correct_answers"] += 1
+                context.user_data["correct_answers"] = context.user_data.get("correct_answers", 0) + 1
 
-            lang_code = context.user_data.get("language", "ru")
-            if is_correct:
-                result_text = "✅ Правильно!"
+
+            from asgiref.sync import sync_to_async
+            @sync_to_async
+            def save_to_db():
+                from zein_app.models import UserAnswer
+                UserAnswer.objects.create(
+                    user_id=user_id,
+                    question_id=q["id"],
+                    answer_id=q["answers"][selected_option]["id"],
+                    is_correct=is_correct
+                )
+
+            await save_to_db()
+
+            total = context.user_data["total_questions"]
+            answered = len(ua)
+            if answered < total:
+                return await self.show_question(update, context)
             else:
-                correct_answer = next((a['text'] for a in question.get('answers', []) if a.get('is_correct')),
-                                      "Не найдено")
-                result_text = f"❌ Неправильно! Правильный ответ: {correct_answer}"
-
-            keyboard = [[InlineKeyboardButton("Следующий вопрос", callback_data="next_question")]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
-            await query.edit_message_text(
-                text=f"{question['text']}\n\nВаш ответ: {selected_answer['text']}\n\n{result_text}",
-                reply_markup=reply_markup
-            )
-
-            return ANSWER
+                return await self.show_quiz_results(update, context)
 
         except Exception as e:
-            logger.error(f"Ошибка в answer_handler: {e}")
-            await update.callback_query.message.reply_text("Произошла ошибка при обработке ответа.")
+            logger.error(f"Ошибка в poll_answer_handler: {e}")
+            await update.effective_chat.send_message("Произошла ошибка при обработке ответа на опрос.")
             return ConversationHandler.END
 
-
-
-
-    # async def quiz_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # async def answer_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     #     try:
     #         query = update.callback_query
     #         await query.answer()
     #
-    #         quiz_id = int(query.data.split("_")[1])
+    #         _, question_index, answer_id = query.data.split("_")
+    #         question_index = int(question_index)
+    #         answer_id = int(answer_id)
+    #
+    #         quiz_data = context.user_data.get("quiz_data")
+    #         question = quiz_data['questions'][question_index]
+    #
+    #         selected_answer = None
+    #         is_correct = False
+    #         for answer in question.get('answers', []):
+    #             if answer['id'] == answer_id:
+    #                 selected_answer = answer
+    #                 is_correct = answer.get('is_correct', False)
+    #                 break
+    #
+    #         context.user_data["user_answers"][question_index] = {
+    #             'question_id': question['id'],
+    #             'answer_id': answer_id,
+    #             'is_correct': is_correct
+    #         }
+    #
+    #         if is_correct:
+    #             context.user_data["correct_answers"] += 1
+    #
     #         lang_code = context.user_data.get("language", "ru")
+    #         if is_correct:
+    #             result_text = "✅ Правильно!"
+    #         else:
+    #             correct_answer = next((a['text'] for a in question.get('answers', []) if a.get('is_correct')),
+    #                                   "Не найдено")
+    #             result_text = f"❌ Неправильно! Правильный ответ: {correct_answer}"
     #
+    #         keyboard = [[InlineKeyboardButton("Следующий вопрос", callback_data="next_question")]]
+    #         reply_markup = InlineKeyboardMarkup(keyboard)
     #
-    #         @sync_to_async
-    #         def get_quiz_with_questions_sync():
-    #             return APIService.get_quiz_with_questions(quiz_id, language_code=lang_code)
+    #         await query.edit_message_text(
+    #             text=f"{question['text']}\n\nВаш ответ: {selected_answer['text']}\n\n{result_text}",
+    #             reply_markup=reply_markup
+    #         )
     #
-    #         quiz_data = await get_quiz_with_questions_sync()
+    #         return ANSWER
     #
-    #         if not quiz_data or not quiz_data.get('questions'):
-    #             await query.edit_message_text(f"Не удалось получить вопросы для теста.")
-    #             return ConversationHandler.END
-    #
-    #
-    #         await query.edit_message_text(f"В этом месте должна быть реализована логика прохождения теста.")
-    #
-    #         return ConversationHandler.END
     #     except Exception as e:
-    #         logger.error(f"Ошибка в quiz_handler: {e}")
-    #         await update.callback_query.message.reply_text("Произошла ошибка. Пожалуйста, попробуйте позже.")
+    #         logger.error(f"Ошибка в answer_handler: {e}")
+    #         await update.callback_query.message.reply_text("Произошла ошибка при обработке ответа.")
     #         return ConversationHandler.END
+
+
     #
     async def cancel_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("Операция отменена.")
         return ConversationHandler.END
 
-
-
-
-# async def quiz_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     try:
-#         query = update.callback_query
-#         await query.answer()
-#
-#         quiz_id = int(query.data.split("_")[1])
-#         lang_code = context.user_data.get("language", "ru")
-#         context.user_data["quiz_id"] = quiz_id
-#         context.user_data["current_question_index"] = 0
-#         context.user_data["correct_answers"] = 0
-#         context.user_data["user_answers"] = {}
-#
-#         @sync_to_async
-#         def get_quiz_with_questions_sync():
-#             return APIService.get_quiz_with_questions(quiz_id, language_code=lang_code)
-#
-#         quiz_data = await get_quiz_with_questions_sync()
-#
-#         if not quiz_data or not quiz_data.get('questions'):
-#             await query.edit_message_text(f"Не удалось получить вопросы для теста.")
-#             return ConversationHandler.END
-#
-#         context.user_data["quiz_data"] = quiz_data
-#         context.user_data["total_questions"] = len(quiz_data.get('questions', []))
-#
-#
-#         return await self.show_question(update, context)
-#
-#     except Exception as e:
-#         logger.error(f"Ошибка в quiz_handler: {e}")
-#         await update.callback_query.message.reply_text("Произошла ошибка. Пожалуйста, попробуйте позже.")
-#         return ConversationHandler.END
-
-
-# async def show_question(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     try:
-#         quiz_data = context.user_data.get("quiz_data")
-#         current_index = context.user_data.get("current_question_index", 0)
-#         lang_code = context.user_data.get("language", "ru")
-#
-#
-#         if current_index >= len(quiz_data.get('questions', [])):
-#             return await self.show_quiz_results(update, context)
-#
-#         question = quiz_data['questions'][current_index]
-#
-#
-#         context.user_data["current_question"] = question
-#
-#
-#         keyboard = []
-#         for answer in question.get('answers', []):
-#             callback_data = f"answer_{current_index}_{answer['id']}"
-#             keyboard.append([InlineKeyboardButton(answer['text'], callback_data=callback_data)])
-#
-#         reply_markup = InlineKeyboardMarkup(keyboard)
-#
-#
-#         question_text = f"Вопрос {current_index + 1} из {context.user_data['total_questions']}:\n\n{question['text']}"
-#
-#         if update.callback_query:
-#             await update.callback_query.edit_message_text(
-#                 text=question_text,
-#                 reply_markup=reply_markup
-#             )
-#         else:
-#             await update.message.reply_text(
-#                 text=question_text,
-#                 reply_markup=reply_markup
-#             )
-#
-#         return QUESTION
-#
-#     except Exception as e:
-#         logger.error(f"Ошибка в show_question: {e}")
-#         if update.callback_query:
-#             await update.callback_query.message.reply_text("Произошла ошибка при отображении вопроса.")
-#         else:
-#             await update.message.reply_text("Произошла ошибка при отображении вопроса.")
-#         return ConversationHandler.END
-
-
-# async def answer_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     try:
-#         query = update.callback_query
-#         await query.answer()
-#
-#
-#         _, question_index, answer_id = query.data.split("_")
-#         question_index = int(question_index)
-#         answer_id = int(answer_id)
-#
-#
-#         quiz_data = context.user_data.get("quiz_data")
-#         question = quiz_data['questions'][question_index]
-#
-#
-#         selected_answer = None
-#         is_correct = False
-#         for answer in question.get('answers', []):
-#             if answer['id'] == answer_id:
-#                 selected_answer = answer
-#                 is_correct = answer.get('is_correct', False)
-#                 break
-#
-#         context.user_data["user_answers"][question_index] = {
-#             'question_id': question['id'],
-#             'answer_id': answer_id,
-#             'is_correct': is_correct
-#         }
-#
-#         if is_correct:
-#             context.user_data["correct_answers"] += 1
-#
-#
-#         lang_code = context.user_data.get("language", "ru")
-#         if is_correct:
-#             result_text = "✅ Правильно!"
-#         else:
-#             correct_answer = next((a['text'] for a in question.get('answers', []) if a.get('is_correct')), "Не найдено")
-#             result_text = f"❌ Неправильно! Правильный ответ: {correct_answer}"
-#
-#
-#         keyboard = [[InlineKeyboardButton("Следующий вопрос", callback_data="next_question")]]
-#         reply_markup = InlineKeyboardMarkup(keyboard)
-#
-#         await query.edit_message_text(
-#             text=f"{question['text']}\n\nВаш ответ: {selected_answer['text']}\n\n{result_text}",
-#             reply_markup=reply_markup
-#         )
-#
-#         return ANSWER
-#
-#     except Exception as e:
-#         logger.error(f"Ошибка в answer_handler: {e}")
-#         await update.callback_query.message.reply_text("Произошла ошибка при обработке ответа.")
-#         return ConversationHandler.END
-
-
-# async def next_question_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     try:
-#         query = update.callback_query
-#         await query.answer()
-#
-#
-#         context.user_data["current_question_index"] += 1
-#
-#
-#         return await self.show_question(update, context)
-#
-#     except Exception as e:
-#         logger.error(f"Ошибка в next_question_handler: {e}")
-#         await update.callback_query.message.reply_text("Произошла ошибка при переходе к следующему вопросу.")
-#         return ConversationHandler.END
 
 
 async def show_quiz_results(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -874,76 +708,3 @@ async def show_quiz_results(self, update: Update, context: ContextTypes.DEFAULT_
         else:
             await update.message.reply_text("Произошла ошибка при отображении результатов.")
         return ConversationHandler.END
-
-
-
-
-
-
-
-# async def restart_subjects_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     try:
-#         query = update.callback_query
-#         await query.answer()
-#
-#         lang_code = context.user_data.get("language", "ru")
-#
-#         @sync_to_async
-#         def get_subjects_sync():
-#             return APIService.get_subjects(language_code=lang_code)
-#
-#         subjects = await get_subjects_sync()
-#
-#         if not subjects:
-#             await query.edit_message_text("Не удалось получить список предметов. Попробуйте снова позже.")
-#             return ConversationHandler.END
-#
-#         keyboard = []
-#         for subject in subjects:
-#             keyboard.append([InlineKeyboardButton(subject["title"], callback_data=f"subject_{subject['id']}")])
-#
-#         reply_markup = InlineKeyboardMarkup(keyboard)
-#         await query.edit_message_text(TEXTS[lang_code]["choose_subject"], reply_markup=reply_markup)
-#
-#         return SUBJECT_SELECTION
-#
-#     except Exception as e:
-#         logger.error(f"Ошибка в restart_subjects_handler: {e}")
-#         await update.callback_query.message.reply_text("Произошла ошибка. Пожалуйста, попробуйте позже.")
-#         return ConversationHandler.END
-
-
-# async def restart_quiz_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     try:
-#         query = update.callback_query
-#         await query.answer()
-#
-#         quiz_id = int(query.data.split("_")[2])
-#         context.user_data["quiz_id"] = quiz_id
-#         context.user_data["current_question_index"] = 0
-#         context.user_data["correct_answers"] = 0
-#         context.user_data["user_answers"] = {}
-#
-#
-#         lang_code = context.user_data.get("language", "ru")
-#
-#         @sync_to_async
-#         def get_quiz_with_questions_sync():
-#             return APIService.get_quiz_with_questions(quiz_id, language_code=lang_code)
-#
-#         quiz_data = await get_quiz_with_questions_sync()
-#
-#         if not quiz_data or not quiz_data.get('questions'):
-#             await query.edit_message_text(f"Не удалось получить вопросы для теста.")
-#             return ConversationHandler.END
-#
-#         context.user_data["quiz_data"] = quiz_data
-#         context.user_data["total_questions"] = len(quiz_data.get('questions', []))
-#
-#
-#         return await self.show_question(update, context)
-#
-#     except Exception as e:
-#         logger.error(f"Ошибка в restart_quiz_handler: {e}")
-#         await update.callback_query.message.reply_text("Произошла ошибка. Пожалуйста, попробуйте позже.")
-#         return ConversationHandler.END

@@ -1,8 +1,87 @@
+# from django.contrib import admin
+# from .models import Subject, Topic, Question, Choice, Quiz, UserAnswer
+#
+# # Register your models here.
+#
+#
+#
+# class ChoiceInline(admin.TabularInline):
+#     model = Choice
+#     extra = 4
+#     min_num = 2
+#
+#
+# @admin.register(Question)
+# class QuestionAdmin(admin.ModelAdmin):
+#     list_display = ('text', 'topic', 'get_subject')
+#     list_filter = ('topic__subject', 'topic')
+#     search_fields = ('text', 'topic__name', 'topic__subject__name')
+#     inlines = [ChoiceInline]
+#
+#     def get_subject(self, obj):
+#         return obj.topic.subject.name
+#
+#     get_subject.short_description = 'Предмет'
+#
+#
+# @admin.register(Topic)
+# class TopicAdmin(admin.ModelAdmin):
+#     list_display = ('name', 'subject', 'get_question_count')
+#     list_filter = ('subject',)
+#     search_fields = ('name', 'subject__name')
+#
+#     def get_question_count(self, obj):
+#         return obj.questions.count()
+#
+#     get_question_count.short_description = 'Кол-во вопросов'
+#
+#
+# @admin.register(Subject)
+# class SubjectAdmin(admin.ModelAdmin):
+#     list_display = ('name', 'get_topic_count')
+#     search_fields = ('name',)
+#
+#     def get_topic_count(self, obj):
+#         return obj.topics.count()
+#
+#     get_topic_count.short_description = 'Кол-во тем'
+#
+#
+# class UserAnswerInline(admin.TabularInline):
+#     model = UserAnswer
+#     extra = 0
+#     readonly_fields = ('question', 'selected_choice', 'is_correct', 'answered_at')
+#     can_delete = False
+#
+#
+# @admin.register(Quiz)
+# class QuizAdmin(admin.ModelAdmin):
+#     list_display = ('id', 'user', 'topic', 'get_subject', 'status', 'score', 'total_questions',
+#                     'get_percentage', 'started_at', 'completed_at')
+#     list_filter = ('status', 'topic__subject', 'topic')
+#     search_fields = ('user__username', 'topic__name', 'topic__subject__name')
+#     readonly_fields = ('user', 'topic', 'status', 'score', 'total_questions',
+#                        'started_at', 'completed_at')
+#     inlines = [UserAnswerInline]
+#
+#     def get_subject(self, obj):
+#         return obj.topic.subject.name
+#
+#     get_subject.short_description = 'Предмет'
+#
+#     def get_percentage(self, obj):
+#         if obj.total_questions == 0:
+#             return 0
+#         return f"{round((obj.score / obj.total_questions) * 100, 2)}%"
+#
+#     get_percentage.short_description = 'Процент'
+
+
+
+
+
 from django.contrib import admin
 from .models import Subject, Topic, Question, Choice, Quiz, UserAnswer
-
-# Register your models here.
-
 
 
 class ChoiceInline(admin.TabularInline):
@@ -19,8 +98,9 @@ class QuestionAdmin(admin.ModelAdmin):
     inlines = [ChoiceInline]
 
     def get_subject(self, obj):
-        return obj.topic.subject.name
-
+        if obj.topic and obj.topic.subject:
+            return obj.topic.subject.name
+        return "-"
     get_subject.short_description = 'Предмет'
 
 
@@ -32,8 +112,7 @@ class TopicAdmin(admin.ModelAdmin):
 
     def get_question_count(self, obj):
         return obj.questions.count()
-
-    get_question_count.short_description = 'Кол-во вопросов'
+    get_question_count.short_description = 'Кол‑во вопросов'
 
 
 @admin.register(Subject)
@@ -43,8 +122,7 @@ class SubjectAdmin(admin.ModelAdmin):
 
     def get_topic_count(self, obj):
         return obj.topics.count()
-
-    get_topic_count.short_description = 'Кол-во тем'
+    get_topic_count.short_description = 'Кол‑во тем'
 
 
 class UserAnswerInline(admin.TabularInline):
@@ -56,22 +134,27 @@ class UserAnswerInline(admin.TabularInline):
 
 @admin.register(Quiz)
 class QuizAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'topic', 'get_subject', 'status', 'score', 'total_questions',
-                    'get_percentage', 'started_at', 'completed_at')
+    list_display = (
+        'id', 'user', 'topic', 'get_subject', 'status',
+        'score', 'total_questions', 'get_percentage',
+        'started_at', 'completed_at'
+    )
     list_filter = ('status', 'topic__subject', 'topic')
     search_fields = ('user__username', 'topic__name', 'topic__subject__name')
-    readonly_fields = ('user', 'topic', 'status', 'score', 'total_questions',
-                       'started_at', 'completed_at')
+    readonly_fields = (
+        'user', 'topic', 'status', 'score',
+        'total_questions', 'started_at', 'completed_at'
+    )
     inlines = [UserAnswerInline]
 
     def get_subject(self, obj):
-        return obj.topic.subject.name
-
+        if obj.topic and obj.topic.subject:
+            return obj.topic.subject.name
+        return "-"
     get_subject.short_description = 'Предмет'
 
     def get_percentage(self, obj):
         if obj.total_questions == 0:
-            return 0
+            return "0%"
         return f"{round((obj.score / obj.total_questions) * 100, 2)}%"
-
     get_percentage.short_description = 'Процент'

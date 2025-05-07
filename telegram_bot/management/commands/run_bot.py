@@ -11,7 +11,6 @@ class Command(BaseCommand):
     help = 'Запускает Telegram бота'
 
     def handle(self, *args, **options):
-        # Токен бота из настроек или переменной окружения
         token = getattr(settings, 'TELEGRAM_BOT_TOKEN', os.environ.get('TELEGRAM_BOT_TOKEN'))
 
         if not token:

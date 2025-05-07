@@ -155,6 +155,7 @@
 import logging
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.sites import requests
 
 from zein_app.models import Subject, Topic, Quiz, Question, UserAnswer, CustomUser, Choice
 
@@ -226,9 +227,9 @@ class APIService:
         return quiz
 
     @staticmethod
-    def get_quizzes(topic_id):
+    def get_quizzes(topic_id, language_code='ru'):
         try:
-            quizzes = Quiz.objects.filter(topic_id=topic_id)
+            quizzes = Quiz.objects.filter(topic_id=topic_id, language_code='ru')
             return [
                 {
                     'id': quiz.id,
@@ -244,6 +245,11 @@ class APIService:
         except Exception as e:
             logger.error(f"Ошибка при получении тестов для темы {topic_id}: {e}")
             return []
+
+
+
+
+
 
     @staticmethod
     def get_quiz_with_questions(quiz_id, language_code='ru'):
@@ -320,3 +326,63 @@ class APIService:
         except Exception as e:
             logger.error(f"Ошибка при регистрации пользователя: {e}")
             return None
+
+
+# @staticmethod
+# def save_quiz_results(quiz_id, user_answers, correct_answers, total_questions):
+#     try:
+#         quiz = Quiz.objects.get(id=quiz_id)
+#
+#         # Обновляем статус квиза
+#         quiz.status = 'completed'
+#         quiz.score = correct_answers
+#         quiz.save()
+#
+#         # Сохраняем ответы пользователя
+#         for question_index, answer_data in user_answers.items():
+#             user_answer = UserAnswer(
+#                 quiz=quiz,
+#                 question_id=answer_data['question_id'],
+#                 choice_id=answer_data['answer_id'],
+#                 is_correct=answer_data['is_correct']
+#             )
+#             user_answer.save()
+#
+#         logger.info(f"Сохранены результаты для викторины {quiz_id}: {correct_answers}/{total_questions}")
+#         return True
+#     except Quiz.DoesNotExist:
+#         logger.warning(f"Викторина с ID {quiz_id} не найдена при сохранении результатов")
+#         return False
+#     except Exception as e:
+#         logger.error(f"Ошибка при сохранении результатов викторины {quiz_id}: {e}")
+#         return False
+
+    @staticmethod
+    def save_quiz_results(quiz_id, user_answers, correct_answers, total_questions):
+        try:
+            quiz = Quiz.objects.get(id=quiz_id)
+
+
+            quiz.status = 'completed'
+            quiz.score = correct_answers
+            quiz.save()
+
+
+            for question_index, answer_data in user_answers.items():
+                user_answer = UserAnswer(
+                    quiz=quiz,
+                    question_id=answer_data['question_id'],
+                    choice_id=answer_data['answer_id'],
+                    is_correct=answer_data['is_correct']
+                )
+                user_answer.save()
+
+            logger.info(f"Сохранены результаты для викторины {quiz_id}: {correct_answers}/{total_questions}")
+            return True
+        except Quiz.DoesNotExist:
+            logger.warning(f"Викторина с ID {quiz_id} не найдена при сохранении результатов")
+            return False
+        except Exception as e:
+            logger.error(f"Ошибка при сохранении результатов викторины {quiz_id}: {e}")
+            return False
+

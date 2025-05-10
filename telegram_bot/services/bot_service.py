@@ -58,8 +58,6 @@ class BotService:
         self.token = token
         self.application = None
 
-
-
     def start(self):
         self.application = Application.builder().token(self.token).build()
 
@@ -78,14 +76,19 @@ class BotService:
                     CallbackQueryHandler(self.quiz_handler, pattern=r"^quiz_"),
                     CallbackQueryHandler(self.restart_quiz_handler, pattern=r"^restart_quiz_")
                 ],
-                QUESTION: [CallbackQueryHandler(self.poll_answer_handler, pattern=r"^answer_")],
+                QUESTION: [
+                    # CallbackQueryHandler is NOT suitable here for poll answers
+                    # Instead, use the PollAnswerHandler added separately
+                ],
                 ANSWER: [CallbackQueryHandler(self.next_question_handler, pattern=r"^next_question$")]
             },
             fallbacks=[CommandHandler("cancel", self.cancel_command)]
         )
 
+        # Add handlers
         self.application.add_handler(CallbackQueryHandler(self.restart_subjects_handler, pattern=r"^restart_subjects$"))
         self.application.add_handler(CallbackQueryHandler(self.restart_quiz_handler, pattern=r"^restart_quiz_"))
+        self.application.add_handler(PollAnswerHandler(self.poll_answer_handler))  # Use PollAnswerHandler for polls
 
         self.application.add_handler(conv_handler)
         self.application.run_polling()
@@ -346,8 +349,8 @@ class BotService:
 
 
     async def show_question(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+       try:
         quiz_data = context.user_data["quiz_data"]
-        print(quiz_data)
         idx = context.user_data.get("current_question_index", 0)
 
         if idx >= len(quiz_data["questions"]):
@@ -372,6 +375,8 @@ class BotService:
         context.user_data["current_question_index"] = idx + 1
 
         return QUESTION
+       except Exception as e:
+           print(e)
 
     # async def show_question(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     #     try:
@@ -540,7 +545,6 @@ class BotService:
             user_id = pa.user.id
             poll_id = pa.poll_id
             selected_option = pa.option_ids[0]
-
             polls_map = context.user_data.get("polls_mapping", {})
             question_index = polls_map.get(poll_id)
             if question_index is None:
@@ -559,18 +563,23 @@ class BotService:
             if is_correct:
                 context.user_data["correct_answers"] = context.user_data.get("correct_answers", 0) + 1
 
-
-            from asgiref.sync import sync_to_async
             @sync_to_async
             def save_to_db():
-                from zein_app.models import UserAnswer
+                from zein_app.models import UserAnswer, Quiz, Question, Choice
+                telegram_user = TelegramUser.objects.get(telegram_id=user_id)
+                user_instance = telegram_user.user
+
+                question_instance = Question.objects.get(id=q["id"])
+                choice_instance = Choice.objects.get(id=q["answers"][selected_option]["id"])
+
+                quiz_instance = Quiz.objects.get(user=user_instance)  # Adjust logic to fetch the correct Quiz instance
+                print(quiz_instance)
                 UserAnswer.objects.create(
-                    user_id=user_id,
-                    question_id=q["id"],
-                    answer_id=q["answers"][selected_option]["id"],
+                    quiz=quiz_instance,
+                    question=question_instance,
+                    selected_choice=choice_instance,
                     is_correct=is_correct
                 )
-
             await save_to_db()
 
             total = context.user_data["total_questions"]
@@ -582,7 +591,7 @@ class BotService:
 
         except Exception as e:
             logger.error(f"Ошибка в poll_answer_handler: {e}")
-            await update.effective_chat.send_message("Произошла ошибка при обработке ответа на опрос.")
+            # await context.bot.send_message("Произошла ошибка при обработке ответа на опрос.")
             return ConversationHandler.END
 
     # async def answer_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

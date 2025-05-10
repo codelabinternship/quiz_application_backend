@@ -271,6 +271,7 @@ class Teacher(models.Model):
 class FAQ(models.Model):
     question = models.CharField(max_length=500)
     answer = models.TextField()
+    order = models.PositiveIntegerField(default=1)
 
     def __str__(self):
         return self.question

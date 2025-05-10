@@ -717,3 +717,37 @@ async def show_quiz_results(self, update: Update, context: ContextTypes.DEFAULT_
         else:
             await update.message.reply_text("Произошла ошибка при отображении результатов.")
         return ConversationHandler.END
+
+
+
+
+
+
+
+import requests
+from django.conf import settings
+
+
+def send_telegram_notification(request_instance):
+    bot_token = settings.TELEGRAM_BOT_TOKEN
+    chat_id = settings.TELEGRAM_ADMIN_CHAT_ID
+
+    message = f"📱 *Новая заявка*\n\n" \
+              f"👤 *Имя:* {request_instance.name}\n" \
+              f"☎️ *Телефон:* {request_instance.phone_number}\n" \
+              f"🕒 *Дата:* {request_instance.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+
+    params = {
+        'chat_id': chat_id,
+        'text': message,
+        'parse_mode': 'Markdown'
+    }
+
+    response = requests.post(url, params=params)
+
+    if response.status_code != 200:
+        raise Exception(f"Failed to send Telegram notification: {response.text}")
+
+    return response.json()

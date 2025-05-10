@@ -61,8 +61,9 @@ CORS_ALLOWED_ORIGINS = [
 ROOT_URLCONF = 'bot_zein.urls'
 
 
-TELEGRAM_BOT_TOKEN = '7610070338:AAGTKLE3EDhW-HO3KuUTm_ysSr9cxeR3N84'
 
+# TELEGRAM_BOT_TOKEN = '7030984237:AAGQq-8qtih8_knyPJn3-PnUjCKAl_xrfy8'
+TELEGRAM_ADMIN_CHAT_ID = 'adminchatidsi'
 
 
 
@@ -105,26 +106,26 @@ WSGI_APPLICATION = 'bot_zein.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 #
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-
-
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'clonezein',
-        'USER': 'postgres',
-        'PASSWORD': 'root',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+
+
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'clonezein',
+#         'USER': 'postgres',
+#         'PASSWORD': 'root',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
 
 
 
@@ -158,11 +159,13 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Tashkent'
 
 USE_I18N = True
 
-USE_TZ = True
+# USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)

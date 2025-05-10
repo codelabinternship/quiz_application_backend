@@ -158,3 +158,17 @@ class QuizAdmin(admin.ModelAdmin):
             return "0%"
         return f"{round((obj.score / obj.total_questions) * 100, 2)}%"
     get_percentage.short_description = 'Процент'
+
+
+
+
+from django.contrib import admin
+from .models import Request
+
+@admin.register(Request)
+class RequestAdmin(admin.ModelAdmin):
+    list_display = ('name', 'phone_number', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('name', 'phone_number')
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)

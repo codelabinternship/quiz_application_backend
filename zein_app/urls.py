@@ -7,7 +7,7 @@ from .views import TelegramBotViewSet
 from .views import (
     CustomUserViewSet, BadPasswordViewSet, HistoryViewSet, CourseViewSet, TeacherViewSet, FAQViewSet, ContactViewSet
 )
-
+from .views import RequestCreateAPIView
 
 from .views import submit_answer
 
@@ -42,7 +42,9 @@ urlpatterns = [
     path('quiz/<int:quiz_id>/next/', QuizAPIView.next_question, name='quiz-next-question'),
     path('quiz/<int:quiz_id>/answer/', QuizAPIView.answer, name='quiz-answer'),
     path('questions/<int:pk>/submit/', submit_answer, name='submit-answer'),
+    path('api/requests/', RequestCreateAPIView.as_view(), name='request-create'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
 
 
 

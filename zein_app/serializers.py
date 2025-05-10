@@ -335,3 +335,12 @@ class TelegramBotSerializer(serializers.ModelSerializer):
     class Meta:
         model = TelegramBot
         fields = '__all__'
+
+
+from .models import Request
+
+class RequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Request
+        fields = ['id', 'name', 'phone_number', 'created_at']
+        read_only_fields = ['id', 'created_at']

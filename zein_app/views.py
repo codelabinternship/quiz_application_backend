@@ -423,6 +423,33 @@ class ContactViewSet(viewsets.ModelViewSet):
     serializer_class = ContactSerializer
 
 
+
+
+
+
+from rest_framework import status
+from rest_framework.response import Response
+from .models import Request
+from .serializers import RequestSerializer
+from telegram_bot.services.bot_service import send_telegram_notification
+
+
+class RequestCreateAPIView(APIView):
+
+    def post(self, request, format=None):
+        serializer = RequestSerializer(data=request.data)
+        if serializer.is_valid():
+            request_instance = serializer.save()
+
+            try:
+                send_telegram_notification(request_instance)
+            except Exception as e:
+                print(f"Error sending Telegram notification: {e}")
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 # views.py
 from rest_framework import viewsets
 from .models import TelegramBot

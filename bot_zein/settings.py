@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-mj6g9t0h$6@o-u813a=f0&%lb9-p(^u1%yk0@3fxl+qj46+$af
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'zein_app',
     'telegram_bot',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -52,12 +53,15 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
-
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
 ROOT_URLCONF = 'bot_zein.urls'
 
 
-TELEGRAM_BOT_TOKEN = '8038681481:AAEkP9TyC4sVj2accPnwaeXW5_Y3jnnaRKw'
+TELEGRAM_BOT_TOKEN = '7610070338:AAGTKLE3EDhW-HO3KuUTm_ysSr9cxeR3N84'
 
 
 
@@ -114,9 +118,9 @@ WSGI_APPLICATION = 'bot_zein.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'nobase',
+        'NAME': 'clonezein',
         'USER': 'postgres',
-        'PASSWORD': '8888',
+        'PASSWORD': 'root',
         'HOST': 'localhost',
         'PORT': '5432',
     }

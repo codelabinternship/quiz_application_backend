@@ -413,7 +413,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
 
 
 class FAQViewSet(viewsets.ModelViewSet):
-    queryset = FAQ.objects.all()
+    queryset = FAQ.objects.all().order_by('order')
     serializer_class = FAQSerializer
 
 

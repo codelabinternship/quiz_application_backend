@@ -62,12 +62,11 @@ ROOT_URLCONF = 'bot_zein.urls'
 
 
 # Quiz bot token
-
 TELEGRAM_BOT_TOKEN = '7830068746:AAHdLt2x7aCOTmLKOmikScP0v0p4DDBEtDs'
-TELEGRAM_ADMIN_CHAT_ID = '1966138199'
+
 # Zein client request
-# TELEGRAM_BOT_TOKEN = '7030984237:AAGQq-8qtih8_knyPJn3-PnUjCKAl_xrfy8'
-# TELEGRAM_ADMIN_CHAT_ID = '7830068746:AAHdLt2x7aCOTmLKOmikScP0v0p4DDBEtDs'
+REQUEST_TELEGRAM_BOT_TOKEN = '7103089556:AAEBBR-Purdq0jSgUkuCtKvtxuOCHk4C06w'
+REQUEST_TELEGRAM_ADMIN_CHAT_ID = '1899277474'
 
 
 
@@ -110,26 +109,26 @@ WSGI_APPLICATION = 'bot_zein.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 #
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-
-
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'clonezein',
-        'USER': 'postgres',
-        'PASSWORD': 'root',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+
+
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'clonezein',
+#         'USER': 'postgres',
+#         'PASSWORD': 'root',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
 
 
 

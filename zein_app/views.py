@@ -113,6 +113,7 @@ class BadPasswordViewSet(viewsets.ModelViewSet):
 
 
 
+
 # class QuestionViewSet(viewsets.ModelViewSet):
 #     queryset = Question.objects.all()
 #     serializer_class = QuestionSerializer
@@ -433,22 +434,34 @@ from .models import Request
 from .serializers import RequestSerializer
 from telegram_bot.services.bot_service import send_telegram_notification
 
-
 class RequestCreateAPIView(APIView):
+    def get(self, request):
+        requests = Request.objects.all().order_by('created_at')
+        serializer = RequestSerializer(requests, many=True)
+        return Response(serializer.data)
 
     def post(self, request, format=None):
         serializer = RequestSerializer(data=request.data)
         if serializer.is_valid():
             request_instance = serializer.save()
-
             try:
                 send_telegram_notification(request_instance)
             except Exception as e:
                 print(f"Error sending Telegram notification: {e}")
-
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class RequestDetailAPIView(APIView):
+    def get(self, request, pk):
+        request_instance = get_object_or_404(Request, pk=pk)
+        serializer = RequestSerializer(request_instance)
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        request_instance = get_object_or_404(Request, pk=pk)
+        request_instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # views.py
 from rest_framework import viewsets

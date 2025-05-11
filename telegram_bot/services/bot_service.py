@@ -729,8 +729,8 @@ from django.conf import settings
 
 
 def send_telegram_notification(request_instance):
-    bot_token = settings.TELEGRAM_BOT_TOKEN
-    chat_id = settings.TELEGRAM_ADMIN_CHAT_ID
+    bot_token = settings.REQUEST_TELEGRAM_BOT_TOKEN
+    chat_id = settings.REQUEST_TELEGRAM_ADMIN_CHAT_ID
 
     message = f"📱 *Новая заявка*\n\n" \
               f"👤 *Имя:* {request_instance.name}\n" \

@@ -73,16 +73,6 @@ class HistorySerializer(serializers.ModelSerializer):
 
 from .models import Question
 
-class QuestionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Question
-        fields = '__all__'
-
-    def validate_correct_choices(self, value):
-        allowed_choices = {"A", "B", "C", "D"}
-        if not all(choice in allowed_choices for choice in value):
-            raise serializers.ValidationError("Each correct choice must be one of 'A', 'B', 'C', or 'D'.")
-        return value
 
 
 
@@ -161,8 +151,41 @@ from .models import Subject, Topic, Question, Choice, Quiz, UserAnswer
 class ChoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Choice
-        fields = ['id', 'text']
+        fields = ['id', 'text','is_correct']
 
+class QuestionSerializer(serializers.ModelSerializer):
+    choices = ChoiceSerializer(many=True)
+
+    class Meta:
+        model = Question
+        fields = ['id', 'text', 'image', 'choices', 'created_at']
+
+    def validate_correct_choices(self, value):
+        allowed_choices = {"A", "B", "C", "D"}
+        if not all(choice in allowed_choices for choice in value):
+            raise serializers.ValidationError("Each correct choice must be one of 'A', 'B', 'C', or 'D'.")
+        return value
+
+    def create(self, validated_data):
+        print("---- - - - ")
+        choices_data = validated_data.pop('choices')
+        question = Question.objects.create(**validated_data)
+        for choice_data in choices_data:
+            Choice.objects.create(question=question, **choice_data)
+        return question
+
+    def update(self, instance, validated_data):
+        choices_data = validated_data.pop('choices', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if choices_data is not None:
+            instance.choices.all().delete()
+            for choice_data in choices_data:
+                Choice.objects.create(question=instance, **choice_data)
+
+        return instance
 
 class AdminChoiceSerializer(serializers.ModelSerializer):
 
@@ -172,10 +195,11 @@ class AdminChoiceSerializer(serializers.ModelSerializer):
 
 
 class QuestionListSerializer(serializers.ModelSerializer):
+    choices = ChoiceSerializer(many=True, read_only=True)
 
     class Meta:
         model = Question
-        fields = ['id', 'text', 'image']
+        fields = ['id', 'text', 'image', 'choices','topic']
 
 
 class QuestionDetailSerializer(serializers.ModelSerializer):
@@ -183,7 +207,7 @@ class QuestionDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ['id', 'text', 'image', 'choices']
+        fields = ['id', 'text', 'image', 'choices','topic']
 
 
 class AdminQuestionSerializer(serializers.ModelSerializer):
@@ -193,13 +217,17 @@ class AdminQuestionSerializer(serializers.ModelSerializer):
         model = Question
         fields = ['id', 'text', 'explanation', 'image', 'choices']
 
+class SubjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subject
+        fields = ['id', 'name']
 
 class TopicListSerializer(serializers.ModelSerializer):
     question_count = serializers.SerializerMethodField()
-
+    subject = SubjectSerializer(read_only=True)
     class Meta:
         model = Topic
-        fields = ['id', 'name', 'description', 'image', 'question_count']
+        fields = ['id', 'name', 'description', 'image', 'question_count','subject','created_at']
 
     def get_question_count(self, obj):
         return obj.questions.count()
@@ -210,7 +238,8 @@ class TopicDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Topic
-        fields = ['id', 'name', 'description', 'image', 'questions']
+        fields = ['id', 'name', 'description', 'image', 'questions', 'subject', 'subject_id','created_at']
+
 
 
 class SubjectListSerializer(serializers.ModelSerializer):
@@ -218,7 +247,7 @@ class SubjectListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subject
-        fields = ['id', 'name', 'description', 'image', 'topic_count']
+        fields = ['id', 'name', 'description', 'image', 'topic_count','created_at']
 
     def get_topic_count(self, obj):
         return obj.topics.count()
@@ -229,7 +258,7 @@ class SubjectDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subject
-        fields = ['id', 'name', 'description', 'image', 'topics']
+        fields = ['id', 'name', 'description', 'image', 'topics','created_at']
 
 
 class UserAnswerSerializer(serializers.ModelSerializer):

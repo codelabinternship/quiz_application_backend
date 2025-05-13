@@ -227,27 +227,23 @@ class TopicViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(subject_id=subject_id)
         return queryset
 
-
 class QuestionViewSet(viewsets.ModelViewSet):
     queryset = Question.objects.all()
-    # permission_classes = [IsAdminOrReadOnly]
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny]  # Change to IsAuthenticated for more security
 
     def get_serializer_class(self):
-        if self.request.user.is_staff:
-            return AdminQuestionSerializer
+        if self.action in ['create', 'update', 'partial_update']:
+            return QuestionSerializer
         if self.action == 'list':
             return QuestionListSerializer
         return QuestionDetailSerializer
 
     def get_queryset(self):
         queryset = Question.objects.all()
-        topic_id = self.request.query_params.get('topic_id', None)
+        topic_id = self.request.query_params.get('topic_id')
         if topic_id is not None:
             queryset = queryset.filter(topic_id=topic_id)
         return queryset
-
-
 class QuizAPIView(APIView):
     # permission_classes = [permissions.IsAuthenticated]
     permission_classes = [AllowAny]
@@ -434,7 +430,11 @@ from .models import Request
 from .serializers import RequestSerializer
 from telegram_bot.services.bot_service import send_telegram_notification
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+@method_decorator(csrf_exempt, name='dispatch')
 class RequestCreateAPIView(APIView):
+    permission_classes = [AllowAny]
     def get(self, request):
         requests = Request.objects.all().order_by('created_at')
         serializer = RequestSerializer(requests, many=True)
@@ -453,6 +453,7 @@ class RequestCreateAPIView(APIView):
 
 
 class RequestDetailAPIView(APIView):
+    permission_classes = [AllowAny]
     def get(self, request, pk):
         request_instance = get_object_or_404(Request, pk=pk)
         serializer = RequestSerializer(request_instance)

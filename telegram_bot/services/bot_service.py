@@ -742,7 +742,8 @@ def send_telegram_notification(request_instance):
     params = {
         'chat_id': chat_id,
         'text': message,
-        'parse_mode': 'Markdown'
+        'parse_mode': 'Markdown',
+        'disable_notification': False
     }
 
     response = requests.post(url, params=params)

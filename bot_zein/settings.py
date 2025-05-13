@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-mj6g9t0h$6@o-u813a=f0&%lb9-p(^u1%yk0@3fxl+qj46+$af
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 
 # Application definition
@@ -56,17 +56,22 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+]
+CSRF_TRUSTED_ORIGINS=[
+    "http://localhost:3000",
     "http://localhost:3001",
 ]
 ROOT_URLCONF = 'bot_zein.urls'
 
 
 # Quiz bot token
-TELEGRAM_BOT_TOKEN = '7830068746:AAHdLt2x7aCOTmLKOmikScP0v0p4DDBEtDs'
+TELEGRAM_BOT_TOKEN = '7610070338:AAGTKLE3EDhW-HO3KuUTm_ysSr9cxeR3N84'
 
 # Zein client request
-REQUEST_TELEGRAM_BOT_TOKEN = '7103089556:AAEBBR-Purdq0jSgUkuCtKvtxuOCHk4C06w'
-REQUEST_TELEGRAM_ADMIN_CHAT_ID = '1899277474'
+REQUEST_TELEGRAM_BOT_TOKEN = '7830068746:AAHdLt2x7aCOTmLKOmikScP0v0p4DDBEtDs'
+REQUEST_TELEGRAM_ADMIN_CHAT_ID = '1966138199'
 
 
 
@@ -109,26 +114,26 @@ WSGI_APPLICATION = 'bot_zein.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 #
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
-
-
-
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'clonezein',
-#         'USER': 'postgres',
-#         'PASSWORD': 'root',
-#         'HOST': 'localhost',
-#         'PORT': '5432',
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+
+
+
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'clonezein',
+        'USER': 'postgres',
+        'PASSWORD': 'root',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
 
 
 

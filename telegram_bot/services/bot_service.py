@@ -723,32 +723,38 @@ async def show_quiz_results(self, update: Update, context: ContextTypes.DEFAULT_
 
 
 
-
 import requests
-from django.conf import settings
+from telegram_bot.models import TelegramSettings
+
+
+def get_telegram_settings():
+    settings_obj = TelegramSettings.get_active()
+
+    if settings_obj is None:
+        raise Exception("Telegram settings not found in database. Please configure them in admin panel.")
+
+    return {
+        'bot_token': settings_obj.bot_token,
+        'admin_chat_id': settings_obj.admin_chat_id
+    }
 
 
 def send_telegram_notification(request_instance):
-    bot_token = settings.REQUEST_TELEGRAM_BOT_TOKEN
-    chat_id = settings.REQUEST_TELEGRAM_ADMIN_CHAT_ID
+    telegram_settings = get_telegram_settings()
+    bot_token = telegram_settings['bot_token']
+    chat_id = telegram_settings['admin_chat_id']
 
     message = f"📱 *Новая заявка*\n\n" \
               f"👤 *Имя:* {request_instance.name}\n" \
               f"☎️ *Телефон:* {request_instance.phone_number}\n" \
               f"🕒 *Дата:* {request_instance.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
-
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-
     params = {
         'chat_id': chat_id,
         'text': message,
-        'parse_mode': 'Markdown',
-        'disable_notification': False
+        'parse_mode': 'Markdown'
     }
-
     response = requests.post(url, params=params)
-
     if response.status_code != 200:
         raise Exception(f"Failed to send Telegram notification: {response.text}")
-
     return response.json()

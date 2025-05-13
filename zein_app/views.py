@@ -87,15 +87,13 @@ class DashboardView(APIView):
 
 from .models import (
     CustomUser, BadPassword, History, Subject, Topic,
-    Question, UserAnswer, Course, Teacher, FAQ, Contact
+    Question, UserAnswer, Course, Teacher, Contact
 )
 from .serializers import (
     CustomUserSerializer, BadPasswordSerializer, HistorySerializer,
     QuestionSerializer, UserAnswerSerializer,
-    CourseSerializer, TeacherSerializer, FAQSerializer, ContactSerializer
+    CourseSerializer, TeacherSerializer, ContactSerializer
 )
-
-
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
@@ -104,6 +102,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['username', 'created_at']
     ordering = ['username']
+
 
 
 
@@ -408,10 +407,45 @@ class TeacherViewSet(viewsets.ModelViewSet):
     serializer_class = TeacherSerializer
 
 
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from django.utils.translation import activate
+from .models import FAQ, Language
+from .serializers import FAQSerializer, LocalizedFAQSerializer
+
 
 class FAQViewSet(viewsets.ModelViewSet):
-    queryset = FAQ.objects.all().order_by('order')
+    queryset = FAQ.objects.filter(is_active=True)
     serializer_class = FAQSerializer
+
+    def get_serializer_class(self):
+        if self.action in ['list', 'retrieve']:
+            return LocalizedFAQSerializer
+        return FAQSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        language = self.request.query_params.get('lang', None)
+
+        if not language:
+            accept_language = self.request.META.get('HTTP_ACCEPT_LANGUAGE', '')
+            if accept_language:
+                language = accept_language.split(',')[0].split('-')[0]
+
+        if language not in [choice[0] for choice in Language.choices]:
+            language = 'en'
+
+        context['language'] = language
+        return context
+
+    @action(detail=False, methods=['get'])
+    def available_languages(self, request):
+        return Response({code: name for code, name in Language.choices})
+
+
+# class FAQViewSet(viewsets.ModelViewSet):
+#     queryset = FAQ.objects.all().order_by('order')
+#     serializer_class = FAQSerializer
 
 
 
@@ -472,3 +506,174 @@ from .serializers import TelegramBotSerializer
 class TelegramBotViewSet(viewsets.ModelViewSet):
     queryset = TelegramBot.objects.all()
     serializer_class = TelegramBotSerializer
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# from rest_framework.decorators import action
+# from rest_framework.response import Response
+# from .models import CustomUser, Results, Language
+# from .serializers import UserSerializer, ResultsSerializer
+#
+# class ResultsViewSet(viewsets.ModelViewSet):
+#     queryset = Results.objects.all()
+#     serializer_class = ResultsSerializer
+#     filter_backends = [filters.SearchFilter]
+#     search_fields = ['full_name', 'language']
+#
+#     def get_queryset(self):
+#         queryset = Results.objects.all()
+#         language = self.request.query_params.get('language', None)
+#
+#         if language is not None:
+#             queryset = queryset.filter(language=language)
+#
+#         return queryset
+#
+#     @action(detail=False, methods=['get'])
+#     def languages(self, request):
+#         languages = [
+#             {'code': code, 'name': name}
+#             for code, name in Language.choices
+#         ]
+#         return Response(languages)
+#
+#     @action(detail=False, methods=['get'])
+#     def top_students(self, request):
+#         top_results = Results.objects.filter(is_top_student=True)
+#         serializer = self.get_serializer(top_results, many=True)
+#         return Response(serializer.data)
+#
+#     @action(detail=False, methods=['get'])
+#     def by_language_group(self, request):
+#         grouped_results = {}
+#
+#         for code, name in Language.choices:
+#             results = Results.objects.filter(language=code)
+#             serializer = ResultsSerializer(results, many=True)
+#             grouped_results[code] = {
+#                 'name': name,
+#                 'results': serializer.data
+#             }
+#
+#         return Response(grouped_results)
+
+
+
+# from rest_framework.decorators import action
+# from rest_framework.response import Response
+# from django_filters.rest_framework import DjangoFilterBackend
+# from .models import CustomUser, Results, Language
+# from .serializers import CustomUserSerializer, ResultsSerializer
+# from .pagination import CustomPagination
+#
+#
+#
+#
+#
+# class ResultsViewSet(viewsets.ModelViewSet):
+#     queryset = Results.objects.all()
+#     serializer_class = ResultsSerializer
+#     pagination_class = CustomPagination
+#     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+#     filterset_fields = ['language', 'proficiency_level', 'exam_type', 'user']
+#     ordering_fields = ['created_at', 'exam_score', 'user__full_name']
+#     ordering = ['-created_at']
+#     search_fields = ['user__full_name', 'exam_type']
+#
+#     @action(detail=False, methods=['get'])
+#     def languages(self, request):
+#         languages = [
+#             {'code': code, 'name': name}
+#             for code, name in Language.choices
+#         ]
+#         return Response(languages)
+#
+#     @action(detail=False, methods=['get'])
+#     def by_language(self, request, language=None):
+#         language = request.query_params.get('language', None)
+#         if language:
+#             results = self.queryset.filter(language=language)
+#             page = self.paginate_queryset(results)
+#             if page is not None:
+#                 serializer = self.get_serializer(page, many=True)
+#                 return self.get_paginated_response(serializer.data)
+#             serializer = self.get_serializer(results, many=True)
+#             return Response(serializer.data)
+#         return Response({"error": "Language parameter is required"}, status=400)
+
+
+from rest_framework import viewsets, filters
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import CustomUser, Results, Language
+from .serializers import CustomUserSerializer, ResultsSerializer
+from .pagination import CustomPagination
+
+
+
+class ResultsViewSet(viewsets.ModelViewSet):
+    queryset = Results.objects.all()
+    serializer_class = ResultsSerializer
+    pagination_class = CustomPagination
+    filter_backends = [filters.OrderingFilter, filters.SearchFilter]
+    ordering_fields = ['created_at', 'exam_score', 'user__full_name']
+    ordering = ['-created_at']
+    search_fields = ['user__full_name', 'exam_type']
+
+    def get_queryset(self):
+        queryset = Results.objects.all()
+
+        language = self.request.query_params.get('language', None)
+        if language:
+            queryset = queryset.filter(language=language)
+
+        proficiency_level = self.request.query_params.get('proficiency_level', None)
+        if proficiency_level:
+            queryset = queryset.filter(proficiency_level=proficiency_level)
+
+        exam_type = self.request.query_params.get('exam_type', None)
+        if exam_type:
+            queryset = queryset.filter(exam_type=exam_type)
+
+        user = self.request.query_params.get('user', None)
+        if user:
+            queryset = queryset.filter(user=user)
+
+        return queryset
+
+    @action(detail=False, methods=['get'])
+    def languages(self, request):
+        languages = [
+            {'code': code, 'name': name}
+            for code, name in Language.choices
+        ]
+        return Response(languages)
+
+    @action(detail=False, methods=['get'])
+    def by_language(self, request, language=None):
+        language = request.query_params.get('language', None)
+        if language:
+            results = self.queryset.filter(language=language)
+            page = self.paginate_queryset(results)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = self.get_serializer(results, many=True)
+            return Response(serializer.data)
+        return Response({"error": "Language parameter is required"}, status=400)

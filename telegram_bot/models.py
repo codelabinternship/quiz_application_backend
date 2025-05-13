@@ -21,5 +21,40 @@ class TelegramUser(models.Model):
         return f"{self.first_name} {self.last_name} ({self.telegram_id})"
 
     class Meta:
-        verbose_name = "Telegram пользователь"
-        verbose_name_plural = "Telegram пользователи"
+        verbose_name = "Telegram user"
+        verbose_name_plural = "Telegram users"
+
+
+
+
+
+class TelegramSettings(models.Model):
+    bot_token = models.CharField(max_length=255, verbose_name="Request bot token")
+    admin_chat_id = models.CharField(max_length=50, verbose_name="ID chat admin")
+    is_active = models.BooleanField(default=True, verbose_name="Active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Settings RequestTelegram bot"
+        verbose_name_plural = "Settings RequestTelegram bot"
+
+    def __str__(self):
+        return f"Settings Request bot (ID: {self.id})"
+
+    def clean(self):
+        if self.is_active:
+            active_settings = TelegramSettings.objects.filter(is_active=True).exclude(id=self.id)
+            if active_settings.exists():
+                active_settings.update(is_active=False)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_active(cls):
+        try:
+            return cls.objects.get(is_active=True)
+        except cls.DoesNotExist:
+            return None

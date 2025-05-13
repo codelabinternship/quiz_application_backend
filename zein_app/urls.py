@@ -12,7 +12,7 @@ from .views import RequestCreateAPIView, RequestDetailAPIView
 from .views import submit_answer
 
 from .views import SubjectViewSet, TopicViewSet, QuestionViewSet, QuizAPIView
-
+from .views import ResultsViewSet
 router = DefaultRouter()
 router.register(r'subjects', SubjectViewSet)
 router.register(r'topics', TopicViewSet)
@@ -28,9 +28,11 @@ router.register(r'bad-passwords', BadPasswordViewSet)
 # router.register(r'user-answers', UserAnswerViewSet)
 router.register(r'courses', CourseViewSet)
 router.register(r'teachers', TeacherViewSet)
-router.register(r'faq', FAQViewSet)
 router.register(r'contacts', ContactViewSet)
 router.register(r'bots', TelegramBotViewSet)
+router.register(r'faqs', FAQViewSet)
+router.register(r'results', ResultsViewSet)
+
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -42,4 +44,9 @@ urlpatterns = [
     path('questions/<int:pk>/submit/', submit_answer, name='submit-answer'),
     path('requests/', RequestCreateAPIView.as_view(), name='request-create'),
     path('requests/<int:pk>/', RequestDetailAPIView.as_view(), name='request-delete'),
+    path('results/language/<str:language>/', ResultsViewSet.as_view({'get': 'by_language'}), name='results-by-language'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
+
+

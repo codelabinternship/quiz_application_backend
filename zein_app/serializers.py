@@ -98,7 +98,7 @@ class BadPasswordSerializer(serializers.ModelSerializer):
 
 from .models import (
     BadPassword, Course,
-    Teacher, FAQ, Contact
+    Teacher, Contact
 )
 
 
@@ -342,11 +342,44 @@ class TeacherSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+from rest_framework import serializers
+from .models import FAQ, Language
+
 
 class FAQSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = FAQ
-        fields = ['id', 'question', 'answer', 'order']
+        fields = '__all__'
+
+
+class LocalizedFAQSerializer(serializers.ModelSerializer):
+    question = serializers.SerializerMethodField()
+    answer = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FAQ
+        fields = ['id', 'question', 'answer', 'order', 'is_active', 'created_at', 'updated_at']
+
+    def __init__(self, *args, **kwargs):
+        # Extract language from context if available
+        super().__init__(*args, **kwargs)
+        self.language = self.context.get('language', 'en')
+        # Validate language code
+        if self.language not in [choice[0] for choice in Language.choices]:
+            self.language = 'en'
+
+    def get_question(self, obj):
+        return obj.get_question(self.language)
+
+    def get_answer(self, obj):
+        return obj.get_answer(self.language)
+
+
+# class FAQSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = FAQ
+#         fields = ['id', 'question', 'answer', 'order']
 
 
 
@@ -373,3 +406,68 @@ class RequestSerializer(serializers.ModelSerializer):
         model = Request
         fields = ['id', 'name', 'phone_number', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+
+from .models import CustomUser, Results, Language
+
+
+# class ResultsSerializer(serializers.ModelSerializer):
+#     language_display = serializers.CharField(source='get_language_display', read_only=True)
+#
+#     class Meta:
+#         model = Results
+#         fields = [
+#             'id', 'full_name', 'language', 'language_display', 'level',
+#             'reading_score', 'listening_score', 'speaking_score',
+#             'writing_score', 'grammar_score', 'vocabulary_score',
+#             'test_type', 'total_score', 'is_top_student'
+#         ]
+
+
+from .models import Results, Language, ProficiencyLevel, ExamType
+
+
+
+
+class ResultsSerializer(serializers.ModelSerializer):
+    language_display = serializers.CharField(source='get_language_display', read_only=True)
+    proficiency_level_display = serializers.CharField(source='get_proficiency_level_display', read_only=True)
+    exam_type_display = serializers.CharField(source='get_exam_type_display', read_only=True)
+    user_full_name = serializers.CharField(source='user.full_name', read_only=True)
+
+    class Meta:
+        model = Results
+        fields = [
+            'id', 'user', 'user_full_name',
+            'language', 'language_display',
+            'proficiency_level', 'proficiency_level_display',
+            'exam_type', 'exam_type_display', 'exam_score',
+            'reading_score', 'grammar_score', 'vocabulary_score',
+            'listening_score', 'speaking_score', 'writing_score', 'created_at', 'updated_at'
+        ]
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+
+        exam_type = instance.exam_type
+
+
+        # if exam_type == ExamType.TOEFL:
+        #     for field in ['reading_score_9', 'listening_score_9', 'speaking_score_9', 'writing_score_9', 'topik_score']:
+        #         if field in ret:
+        #             ret.pop(field, None)
+
+        # elif exam_type == ExamType.IELTS:
+        #     for field in ['reading_score_30', 'listening_score_30', 'speaking_score_30', 'writing_score_30',
+        #                   'topik_score']:
+        #         if field in ret:
+        #             ret.pop(field, None)
+
+        # elif exam_type == ExamType.TOPIK:
+        #     for field in ['reading_score_30', 'listening_score_30', 'speaking_score_30', 'writing_score_30',
+        #                   'reading_score_9', 'listening_score_9', 'speaking_score_9', 'writing_score_9']:
+        #         if field in ret:
+        #             ret.pop(field, None)
+        #
+        # return ret
+

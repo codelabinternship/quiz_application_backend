@@ -162,7 +162,7 @@ class QuizAdmin(admin.ModelAdmin):
 
 
 
-from django.contrib import admin
+
 from .models import Request
 
 @admin.register(Request)
@@ -172,3 +172,49 @@ class RequestAdmin(admin.ModelAdmin):
     search_fields = ('name', 'phone_number')
     readonly_fields = ('created_at',)
     ordering = ('-created_at',)
+
+
+
+from .models import FAQ
+
+
+class FAQAdmin(admin.ModelAdmin):
+    list_display = ('get_display_name', 'order', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('question_en', 'question_ru', 'question_uz')
+    fieldsets = (
+        (None, {
+            'fields': ('order', 'is_active')
+        }),
+        ('Uzbek', {
+            'fields': ('question_uz', 'answer_uz'),
+            'classes': ('collapse',),
+        }),
+        ('Russian', {
+            'fields': ('question_ru', 'answer_ru'),
+            'classes': ('collapse',),
+        }),
+        ('English', {
+            'fields': ('question_en', 'answer_en'),
+        }),
+        ('Arabic', {
+            'fields': ('question_ar', 'answer_ar'),
+            'classes': ('collapse',),
+        }),
+        ('Korean', {
+            'fields': ('question_ko', 'answer_ko'),
+            'classes': ('collapse',),
+        }),
+        ('Turkish', {
+            'fields': ('question_tr', 'answer_tr'),
+            'classes': ('collapse',),
+        }),
+    )
+
+    def get_display_name(self, obj):
+        return str(obj)
+
+    get_display_name.short_description = 'Question'
+
+
+admin.site.register(FAQ, FAQAdmin)

@@ -242,10 +242,13 @@ class UserAnswer(models.Model):
 
 
 class Course(models.Model):
+    title = models.CharField(max_length=100)
     language = models.CharField(max_length=100)
     duration_months = models.PositiveIntegerField()
     level = models.CharField(max_length=10)
     price = models.PositiveIntegerField()
+    description = models.CharField(max_length=255)
+    Sign = models.CharField(max_length=100, default="SIGN_123")
 
     def __str__(self):
         return f'{self.language} ({self.level})'

@@ -270,14 +270,70 @@ class Teacher(models.Model):
 
 
 
+from django.utils.translation import gettext_lazy as _
+
+class Language(models.TextChoices):
+    UZBEK = 'uz', _('Uzbek')
+    RUSSIAN = 'ru', _('Russian')
+    ENGLISH = 'en', _('English')
+    ARABIC = 'ar', _('Arabic')
+    KOREAN = 'ko', _('Korean')
+    TURKISH = 'tr', _('Turkish')
+
 
 class FAQ(models.Model):
-    question = models.CharField(max_length=500)
-    answer = models.TextField()
-    order = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    question_uz = models.CharField(max_length=255, blank=True)
+    question_ru = models.CharField(max_length=255, blank=True)
+    question_en = models.CharField(max_length=255, blank=True)
+    question_ar = models.CharField(max_length=255, blank=True)
+    question_ko = models.CharField(max_length=255, blank=True)
+    question_tr = models.CharField(max_length=255, blank=True)
+
+    answer_uz = models.TextField(blank=True)
+    answer_ru = models.TextField(blank=True)
+    answer_en = models.TextField(blank=True)
+    answer_ar = models.TextField(blank=True)
+    answer_ko = models.TextField(blank=True)
+    answer_tr = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['order']
+        verbose_name = "FAQ"
+        verbose_name_plural = "FAQs"
 
     def __str__(self):
-        return self.question
+        if self.question_en:
+            return self.question_en
+
+        for lang_code in [f.name.split('_')[1] for f in self._meta.fields if f.name.startswith('question_')]:
+            question = getattr(self, f'question_{lang_code}')
+            if question:
+                return question
+
+        return f"FAQ #{self.id}"
+
+    def get_question(self, language_code):
+        return getattr(self, f'question_{language_code}', '')
+
+    def get_answer(self, language_code):
+        return getattr(self, f'answer_{language_code}', '')
+
+
+
+# class FAQ(models.Model):
+#     language = models.ForeignKey(on_delete=models.CASCADE, null=True, blank=True)
+#     question = models.CharField(max_length=500)
+#     answer = models.TextField()
+#     order = models.PositiveIntegerField(default=1)
+#
+#
+#     def __str__(self):
+#         return self.question
 
 
 
@@ -326,3 +382,64 @@ class Request(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+
+# class CustomAdmin(models.Model):
+#     admin_chat_id = models.CharField(mini_length=300)
+#     request_bot_token = models.CharField(max_length=500)
+
+
+
+
+
+from django.core.validators import MinValueValidator, MaxValueValidator
+
+
+class ProficiencyLevel(models.TextChoices):
+    A1 = 'A1', _('A1')
+    A2 = 'A2', _('A2')
+    B1 = 'B1', _('B1')
+    B2 = 'B2', _('B2')
+    C1 = 'C1', _('C1')
+    C2 = 'C2', _('C2')
+
+
+class ExamType(models.TextChoices):
+    TOEFL = 'TOEFL', _('TOEFL')
+    IELTS = 'IELTS', _('IELTS')
+    TORFL = 'TORFL', _('TORFL')
+    TOPIK = 'TOPIK', _('TOPIK')
+    TOMER = 'TOMER', _('TOMER')
+    ALPT = 'ALPT', _('ALPT')
+
+
+class Results(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='results')
+    language = models.CharField(max_length=2, choices=Language.choices, default=Language.ENGLISH)
+    proficiency_level = models.CharField(max_length=2, choices=ProficiencyLevel.choices)
+    exam_type = models.CharField(max_length=10, choices=ExamType.choices, null=True, blank=True)
+    exam_score = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+
+    reading_score = models.IntegerField(null=True, blank=True,
+                                        validators=[MinValueValidator(0), MaxValueValidator(100)])
+    grammar_score = models.IntegerField(null=True, blank=True,
+                                        validators=[MinValueValidator(0), MaxValueValidator(100)])
+    vocabulary_score = models.IntegerField(null=True, blank=True,
+                                           validators=[MinValueValidator(0), MaxValueValidator(100)])
+    listening_score = models.IntegerField(null=True, blank=True,
+                                          validators=[MinValueValidator(0), MaxValueValidator(100)])
+    speaking_score = models.IntegerField(null=True, blank=True,
+                                         validators=[MinValueValidator(0), MaxValueValidator(100)])
+    writing_score = models.IntegerField(null=True, blank=True,
+                                        validators=[MinValueValidator(0), MaxValueValidator(100)])
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('Result')
+        verbose_name_plural = _('Results')
+
+    def __str__(self):
+        return f"{self.user.full_name} - {self.get_language_display()} ({self.proficiency_level})"
